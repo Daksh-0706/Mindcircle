@@ -1,0 +1,2 @@
+/home/daksh/Documents/Mindcircle/temp-app/verify.txt
+wrote2
