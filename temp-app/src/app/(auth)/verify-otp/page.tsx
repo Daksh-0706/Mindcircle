@@ -4,7 +4,8 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Heart, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { Heart, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const pageTransition = {
   initial: { opacity: 0, y: 12 },
@@ -23,6 +24,21 @@ export default function VerifyOtpPage() {
   const [countdown, setCountdown] = useState(30)
   const [canResend, setCanResend] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const [email, setEmail] = useState('')
+  const [mode, setMode] = useState<'signup' | 'email'>('signup')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Pull the email passed from /signup (or /login) out of the URL. Read via
+  // window.location to keep this page safe during static prerender.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const e = params.get('email')
+    if (e) setEmail(e)
+    // Default to the signup-confirmation flow; `?mode=email` opts into OTP sign-in.
+    setMode(params.get('mode') === 'email' ? 'email' : 'signup')
+  }, [])
 
   // Countdown timer for resend
   useEffect(() => {
@@ -90,16 +106,54 @@ export default function VerifyOtpPage() {
     []
   )
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const code = otp.join('')
-    if (code.length === OTP_LENGTH) {
-      setVerified(true)
-      setTimeout(() => router.push('/onboarding'), 1500)
+    if (code.length !== OTP_LENGTH) return
+    setError('')
+    setLoading(true)
+
+    const supabase = createClient()
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: mode, // 'signup' for account confirmation, 'email' for OTP sign-in
+    })
+
+    setLoading(false)
+
+    if (verifyError) {
+      setError("That code didn't match. Double-check your email and try again.")
+      return
     }
+
+    setVerified(true)
+    setTimeout(() => router.push('/onboarding'), 1500)
   }
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (!canResend) return
+    setError('')
+    setLoading(true)
+
+    const supabase = createClient()
+    if (mode === 'signup') {
+      await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/app/onboarding`,
+        },
+      })
+    } else {
+      await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+    }
+
+    setLoading(false)
     setCountdown(30)
     setCanResend(false)
     setOtp(Array(OTP_LENGTH).fill(''))
@@ -169,15 +223,29 @@ export default function VerifyOtpPage() {
                 ))}
               </div>
 
+              {/* Error */}
+              {error && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-terracotta/10 text-terracotta text-sm font-medium mb-4">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
               {/* Verify button */}
               <button
                 onClick={handleVerify}
-                disabled={!isComplete}
+                disabled={!isComplete || loading}
                 className={`btn-gradient w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 ${
-                  !isComplete ? 'opacity-50 cursor-not-allowed' : ''
+                  !isComplete || loading ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
-                Verify
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Verifying...
+                  </>
+                ) : (
+                  'Verify'
+                )}
               </button>
 
               {/* Resend */}

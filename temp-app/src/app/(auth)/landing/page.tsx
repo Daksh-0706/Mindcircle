@@ -17,8 +17,8 @@ import {
   Heart,
   BookOpen,
   Mail,
-  Instagram,
-  Twitter,
+  AtSign,
+  Send,
 } from 'lucide-react'
 import { FEATURES, TESTIMONIALS } from '../../../lib/constants'
 
@@ -602,12 +602,12 @@ function Footer() {
               </li>
               <li>
                 <a href="#" className="flex items-center gap-2 hover:text-cream transition-colors">
-                  <Instagram className="w-4 h-4" /> @mindcircle
+                  <AtSign className="w-4 h-4" /> @mindcircle
                 </a>
               </li>
               <li>
                 <a href="#" className="flex items-center gap-2 hover:text-cream transition-colors">
-                  <Twitter className="w-4 h-4" /> @mindcircle
+                  <Send className="w-4 h-4" /> @mindcircle
                 </a>
               </li>
             </ul>

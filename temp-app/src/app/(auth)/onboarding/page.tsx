@@ -67,18 +67,18 @@ export default function OnboardingPage() {
     const next = current + newDirection
     if (next < 0) return
     if (next >= slides.length) {
-      router.push('/app')
+      router.push('/app/activities')
       return
     }
     setCurrent([next, newDirection])
   }
 
   const handleSkip = () => {
-    router.push('/app')
+    router.push('/app/activities')
   }
 
   const handleGetStarted = () => {
-    router.push('/app')
+    router.push('/app/activities')
   }
 
   return (

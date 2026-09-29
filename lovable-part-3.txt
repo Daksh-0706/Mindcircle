@@ -1,0 +1,294 @@
+================================================================================
+MINDCIRCLE - LOVABLE BUILD - PART 3 OF 3 (FINAL)
+Remaining 9 routes, then the full audit.
+================================================================================
+
+
+PARTS 1 AND 2 ARE DONE. The theme seed, design tokens, contrast contract,
+component library and responsive shell are already in place. Do not recreate
+them. Do not re-introduce any default shadcn colour.
+
+QUICK TOKEN REFERENCE (for your own checking - do not redefine these):
+  cream #FFF8F0   cream-dark #F5EDE3   plum #4A2C5E      plum-light #6B4A80
+  plum-dark #3A1F4A   terracotta #C45D3E   terracotta-light #D4785C
+  terracotta-dark #A04830   sage #7B9E6B   sage-light #9BB88C
+  sage-dark #5C7A4F   charcoal #2A2A2A   warm-gray #8A8A8A
+  warm-gray-light #B0B0B0   warm-gray-lighter #E8E0D8   danger #D64545
+  white #FFFFFF
+  Text aliases: ink #2A2A2A, ink-muted #6A6865, ink-faint #80698A,
+  danger-text #B93A3A
+  Signature gradient: linear-gradient(135deg, #4A2C5E 0%, #9A4A34 100%)
+  Fonts: Fraunces (headings), DM Sans (body)
+  Card: bg-white/75 + border-warm-gray-lighter/60 + shadow-soft
+  Input: bg-cream-dark, focus border plum
+
+All rules from Part 1 still apply in full:
+
+  - The 17 palette hexes are FROZEN. No 18th colour. No hardcoded hex in any
+    component file.
+  - Text colours: body text-ink, secondary text-ink-muted, meta text-ink-faint,
+    warm emphasis text-terracotta-dark, calm text-sage-dark, errors
+    text-danger-text, text on plum text-cream, text on sage fill text-plum.
+  - sage is never text. warm-gray is never text. danger is never body text.
+    warm-gray-lighter is never text.
+  - One gradient per screen maximum, and it must be --brand-gradient.
+  - No indigo, violet, blue, cyan, emerald, neon or glow. No Inter. No
+    shadow-2xl. No rounded-3xl. No animate-bounce, animate-pulse or
+    animate-spin. No alert() or confirm(). No TODO.
+  - Emoji are content, not UI chrome. Never a button icon or a nav icon.
+  - No row of 3 or 4 identical cards. No 4-card KPI row. No 3-across uniform
+    grid as a page's default shape. Asymmetric 1.15fr / 0.85fr is preferred.
+  - Every data-backed view has loading, empty, error and success states.
+  - Copy is plain and warm. Banned: elevate, unlock, journey, holistic, empower,
+    game-changer, dive in, start your free trial. No emoji in body copy.
+
+Build ONLY the 9 routes below, then run the full audit in Section B.
+
+
+================================================================================
+SECTION A - BUILD THESE 9 ROUTES
+================================================================================
+
+--------------------------------------------------------------------------------
+ROUTE 1 of 9 - /app/story/create   Accent: plum.  Gradient: composer only.
+--------------------------------------------------------------------------------
+A full-bleed compose surface. The textarea IS the page.
+
+  - Textarea: font-heading text-2xl leading-snug, transparent background, no
+    card border, min-height 40vh, placeholder in Fraunces italic.
+  - A captured photo, if present, sits above at rounded-2xl max-h-72
+    object-cover.
+  - Toolbar: photo, one mood emoji, and "add a prompt" - all rounded-full
+    bg-cream-dark, 44px.
+  - A live character counter in text-xs at 280.
+  - Sticky bottom bar: "Share anonymously" primary with a lock icon, and "Save
+    draft" ghost.
+  - A single line above the sticky bar: "Shared anonymously. No name, no
+    profile, ever."
+
+No preview card. No audience selector. No hashtag input. No character-count
+spinner. This is the one page where a full-bleed gradient is correct, and only
+on the composer surface.
+
+--------------------------------------------------------------------------------
+ROUTE 2 of 9 - /app/profile        Accent: plum.  No gradient.
+--------------------------------------------------------------------------------
+PageHeader with the user's name and avatar. Tabs: About, Journal, Saved,
+Achievements.
+
+About        An avatar with a change-photo control. Name and bio fields. A
+             college/year field. 5 interest chips (rounded-full, multi-select,
+             plum when active). An "Anonymous alias" row showing the generated
+             alias with a regenerate icon button. A read-only "Member since".
+Journal      A compact list of entries: date, title, mood emoji, word count.
+             Two hairline-separated sections, drafts first.
+Saved        Saved activities and saved prompts, in two hairline-separated
+             lists. Each row has a title, a one-line note, and a remove icon
+             button.
+Achievements A 3-column grid of small tiles. Earned ones are sage/10 with a
+             check. Locked ones are warm-gray-lighter/60 with a lock and the
+             requirement in text-xs. No confetti. No trophy emoji wall.
+
+Tab state persists in the URL query string, not in component state only.
+
+--------------------------------------------------------------------------------
+ROUTE 3 of 9 - /app/settings       Accent: plum.  No gradient.
+--------------------------------------------------------------------------------
+Grouped settings, NOT a flat list. Section headers with hairlines.
+
+  Account            email, change password, phone
+  Privacy and Safety anonymity toggles each with a one-line explanation,
+                     "Who can see my journal" as a 3-option radio, a
+                     data-export button, and a danger-outlined delete account
+                     that opens a Dialog requiring the typed confirmation
+                     "DELETE"
+  Notifications      4 toggles with real descriptions
+  Appearance         3 radio options - Calm (default), Soft contrast, System -
+                     implemented with REAL CSS variable swaps, not a fake
+                     toggle. This must actually change the rendered colours.
+  Support            links to FAQ, Support, Crisis
+  About              version, privacy policy, terms
+
+Every toggle row: label text-sm font-medium, description text-xs
+text-ink-muted, switch on the right. Destructive actions are always last in
+their group.
+
+The delete Dialog is the only place danger is used on this page, and only for
+the confirm button and the outlined button.
+
+--------------------------------------------------------------------------------
+ROUTE 4 of 9 - /app/help/faq       Accent: plum.  No gradient.
+--------------------------------------------------------------------------------
+PageHeader "Help and FAQ" plus a search field that filters the list live as you
+type.
+
+12 real questions across 4 groups, each group a SectionHeader with a hairline:
+  Privacy              how private the journal is, what encryption covers
+  Community            how anonymous sharing works, room rules, reporting
+  Counselling and fees  how to book, what a session costs, cancellation
+  Account and data      deleting the account, exporting data, changing settings
+
+Answers in an Accordion: a rounded-xl row, a plum + that rotates to x when
+open, the answer in text-sm leading-6 with 80% charcoal.
+
+An EmptyState when the search matches nothing, with a "Browse all questions"
+reset that clears the query.
+
+A closing card linking to /app/help/support and /app/crisis.
+
+Write real, specific answers. No "This is a great question!" opener.
+
+--------------------------------------------------------------------------------
+ROUTE 5 of 9 - /app/help/support   Accent: sage.  No gradient.
+--------------------------------------------------------------------------------
+PageHeader "Support".
+
+Left: 3 contact cards (Email with a 2-working-day reply time, Report a concern,
+Feedback), each with a real-looking address and a primary action.
+
+Right rail: a "Before you write" list of 4 links that answer the most common
+messages, plus a sage/10 card: "If this is urgent, please use Crisis Support
+instead" with a link.
+
+Below: a 3-field form (topic select, message textarea, optional email) with
+inline validation, and a success state that replaces the form with a
+confirmation and a reference id.
+
+--------------------------------------------------------------------------------
+ROUTE 6 of 9 - /                  Accent: none.  No gradient.
+--------------------------------------------------------------------------------
+A redirect only. On mount, navigate to /landing with replace.
+
+While it resolves, show the wordmark (Fraunces bold, gradient text) centred on
+bg-cream with one text-sm text-ink-muted line, "Loading your safe space".
+
+No layout. No nav. No redirect flicker.
+
+--------------------------------------------------------------------------------
+ROUTE 7 of 9 - /signup             Accent: plum.  No gradient.
+--------------------------------------------------------------------------------
+Same split layout as /login. Left: the form, max 400px. Right: a plum panel
+with a soft radial wash, one short reassuring line, and 2 to 3 rotating student
+reflections as plain quotes. Below 1024 the panel is dropped.
+
+Fields: name, email, password. A required consent checkbox reading "I
+understand MindCircle is not emergency care" in text-xs.
+
+The password field has a show/hide toggle and a strength hint in plain words
+(not a coloured meter bar). Inline validation on blur with a danger border and
+helper text.
+
+Full-width primary. A divider with "or", then an OTP sign-in option.
+
+--------------------------------------------------------------------------------
+ROUTE 8 of 9 - /verify-otp         Accent: plum.  No gradient.
+--------------------------------------------------------------------------------
+Same split layout.
+
+6 separate single-character boxes, auto-advance on entry, paste support that
+fills all 6, and backspace that moves back. A 60s resend countdown with a
+"Send again" link that only appears when the countdown ends.
+
+A calm "Check your messages" state showing the destination email, with an
+option to change the number.
+
+An error state for a wrong or expired code: danger border on the boxes plus one
+plain helper line. No shake animation, no red screen.
+
+--------------------------------------------------------------------------------
+ROUTE 9 of 9 - /onboarding         Accent: sage.  No gradient.
+--------------------------------------------------------------------------------
+Full-screen, no nav, no footer.
+
+3 slides, horizontal slide plus fade. Progress as 3 dots where the active one
+is a terracotta PILL, not a filled circle. A "Skip" text link, shown on slide 1
+only.
+
+Each slide: a 72px emoji or icon tile on a tinted circle (accents cycle sage,
+plum, terracotta), a Fraunces title, and two lines of plain copy.
+
+A final slide collects interest chips: Journaling, Peer support, Counselling,
+Activities, Mood tracking. rounded-full, multi-select, plum border and plum/5
+fill when active. A "Continue" primary that is disabled until at least one is
+picked, with a helper line saying why.
+
+Then a "You're all set" state using the user's first name, a sage check, and a
+single "Open MindCircle" primary that routes to /app.
+
+No confetti. No animated celebration.
+
+
+================================================================================
+SECTION B - FULL AUDIT (DO NOT SKIP)
+================================================================================
+
+Now audit everything you have built across all three parts, and fix what you
+find.
+
+STEP 1 - grep the source for banned patterns. Every hit must be fixed:
+
+  #6366F1  #8B5CF6  #A855F7
+  indigo  violet  purple-  blue-  sky-  cyan
+  emerald  slate-  gray-
+  neon  glow
+  Inter  Geist  shadow-2xl  rounded-3xl
+  animate-bounce  animate-pulse  animate-spin
+  from-*-500  to-*-500
+  alert(  confirm(  TODO
+  text-warm-gray  text-sage  text-danger  text-warm-gray-light
+  text-warm-gray-lighter
+  bg-sage  bg-terracotta     (solid accent fills without plum text)
+
+STEP 2 - hardcoded hex audit. Grep for # followed by 6 hex characters outside
+index.css and src/data/. There must be zero hits in components and pages.
+
+STEP 3 - gradient audit. Grep bg-gradient-to and count per file. Maximum one per
+screen, and the endpoint must come from --brand-gradient or plum or plum-light.
+Never bare terracotta behind text. /app/crisis must have zero gradients.
+
+STEP 4 - route coverage check. Confirm all 23 routes exist and render:
+  /, /landing, /login, /signup, /verify-otp, /onboarding,
+  /app, /app/journal, /app/insights, /app/connect, /app/chats, /app/chat/:id,
+  /app/activities, /app/activities/:id, /app/assessment, /app/counsellors,
+  /app/counsellor/:id, /app/profile, /app/settings, /app/crisis,
+  /app/story/create, /app/help/faq, /app/help/support
+
+STEP 5 - open every route at 390px, 834px and 1440px and confirm:
+  - the gradient appears at most once per screen
+  - no screen is three identical cards in a row
+  - every chart has a takeaway line
+  - no emoji is used as a UI icon
+  - no text is centred that should be left-aligned
+  - every text and background pair is 4.5:1 or better (use a contrast tool, do
+    not eyeball it)
+  - no horizontal scroll at 320px width
+
+STEP 6 - keyboard pass. Tab through each page. Every control must reach a
+visible plum focus ring. Modals and the chat composer must be operable without
+a mouse.
+
+STEP 7 - responsive chrome check. Confirm:
+  - under 768: MobileHeader plus BottomNav, no sidebar
+  - 768 to 1023: same chrome, content max 720px
+  - 1024 and above: SideNav plus TopBar, no BottomNav, no MobileHeader
+  - /app/chat/:id and /app/activities/:id hide the bottom nav on all sizes
+
+
+================================================================================
+FINAL REPORT
+================================================================================
+
+Report all of the following. Do not claim a pass without having actually
+looked.
+
+  1. A table of all 23 routes: route, accent used, gradient yes/no, and which
+     of the four states (loading, empty, error, success) are implemented.
+  2. Every banned-pattern grep hit you found, and how you fixed it.
+  3. Any hardcoded hex you removed.
+  4. Any new shared component you created and why.
+  5. Anything still stubbed or placeholder.
+  6. Anything you could not do and why.
+
+================================================================================
+END OF PART 3
+================================================================================

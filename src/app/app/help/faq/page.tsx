@@ -1,0 +1,5 @@
+'use client'
+import { AppNav } from '../../../../components/layout/AppNavContext'
+import Card from '../../../../components/ui/Card'
+const questions=['How private is my journal?','How does anonymous sharing work?','Can I delete my account?','How do I contact a counsellor?']
+export default function FaqPage(){return <><AppNav title="Help & FAQ" showBack/><div className="page-enter mx-auto max-w-3xl space-y-6 pb-8"><div><p className="text-sm text-warm-gray">Answers for common questions</p><h1 className="mt-1 font-heading text-3xl font-semibold">How can we help?</h1></div><div className="space-y-3">{questions.map(q=><details key={q} className="group"><summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-warm-gray-lighter bg-white/75 px-5 py-4 font-medium">{q}<span className="text-xl text-plum">+</span></summary><Card padding="md" className="mt-1 rounded-t-none bg-cream-dark text-sm leading-6 text-warm-gray">MindCircle is designed around your privacy and control. You can review the relevant settings any time from your account.</Card></details>)}</div></div></>}

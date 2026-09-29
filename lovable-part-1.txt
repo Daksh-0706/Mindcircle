@@ -1,0 +1,673 @@
+================================================================================
+MINDCIRCLE - LOVABLE BUILD - PART 1 OF 3
+Foundation + first 5 pages.  STOP after /app/insights and report.
+================================================================================
+
+
+You are building MindCircle, a mental-wellbeing app for college students
+(18-24, India-first, English + Hinglish tone). A quiet, warm, private space -
+not a clinical tool, not a productivity app.
+
+The routing, colour tokens and component library are already decided.
+Do not invent a new design system. Execute the one below.
+
+This is PART 1. Build the foundation (Sections 0-6), then ONLY these five
+routes: /landing, /login, /app, /app/journal, /app/insights.
+Then STOP and show me each one rendered at 390px, 834px and 1440px.
+Do not start the other routes. I will send Part 2 after review.
+
+
+================================================================================
+SECTION 0 - WHAT TO DELETE FIRST
+================================================================================
+
+- Delete the default landing/hero page, the "Features / Testimonials / Pricing /
+  CTA" sections, and the default shadcn theme block.
+- Remove every Tailwind default-palette class you may have generated
+  (bg-gray-100, text-slate-500, bg-blue-600, bg-primary). Named tokens only.
+- Keep the Vite + React + TypeScript + Tailwind setup you generated. Keep React
+  Router. Keep framer-motion and lucide-react (install if missing).
+- Do not add any other dependency. No chart library, no date library, no
+  component library. Charts are hand-built SVG.
+
+
+================================================================================
+SECTION 1 - DESIGN TOKENS
+================================================================================
+
+PALETTE - never add a colour outside this list.
+
+  Token               Hex        Use for
+  -----------------  ---------  ---------------------------------------------
+  cream               #FFF8F0    page background
+  cream-dark          #F5EDE3    inset surfaces, secondary fills
+  plum                #4A2C5E    primary text on cream, actions, dark surfaces
+  plum-light          #6B4A80    hover state on plum
+  plum-dark           #3A1F4A    deepest plum
+  terracotta          #C45D3E    warm accent - one CTA per view
+  terracotta-light    #D4785C    accent hover
+  terracotta-dark     #A04830    accent text on light background
+  sage                #7B9E6B    calm / success / grounding - fills, dots
+  sage-light          #9BB88C    sage fills on dark
+  sage-dark           #5C7A4F    sage text on light background
+  charcoal            #2A2A2A    body text
+  warm-gray           #8A8A8A    NON-TEXT - icons, dividers, disabled
+  warm-gray-light     #B0B0B0    placeholders, disabled
+  warm-gray-lighter   #E8E0D8    hairline borders. NEVER text.
+  danger              #D64545    destructive, errors - borders and icons
+  white               #FFFFFF    card fill, text on dark
+
+These 17 hex values are FROZEN. Do not "improve" them, shift a hue, convert to
+OKLCH, or add an 18th colour. Derived tints only as alpha variants
+(bg-plum/10), never as new hexes.
+
+
+--------------------------------------------------------------------------------
+1.1  THEME SEED - paste this before anything else
+--------------------------------------------------------------------------------
+
+Replace your entire generated stylesheet with this.
+
+    @import "tailwindcss";
+
+    @theme {
+      --color-cream:             #FFF8F0;
+      --color-cream-dark:        #F5EDE3;
+      --color-plum:              #4A2C5E;
+      --color-plum-light:        #6B4A80;
+      --color-plum-dark:         #3A1F4A;
+      --color-terracotta:        #C45D3E;
+      --color-terracotta-light:  #D4785C;
+      --color-terracotta-dark:   #A04830;
+      --color-sage:              #7B9E6B;
+      --color-sage-light:        #9BB88C;
+      --color-sage-dark:         #5C7A4F;
+      --color-charcoal:          #2A2A2A;
+      --color-warm-gray:         #8A8A8A;
+      --color-warm-gray-light:   #B0B0B0;
+      --color-warm-gray-lighter: #E8E0D8;
+      --color-danger:            #D64545;
+      --color-white:             #FFFFFF;
+
+      /* Text-safe aliases. The raw palette fails WCAG AA in four places. */
+      --color-ink:         #2A2A2A;  /* body            13.63:1 on cream */
+      --color-ink-muted:   #6A6865;  /* secondary        5.27:1 on cream */
+      --color-ink-faint:   #80698A;  /* meta, plum-tinted 4.63:1 on cream */
+      --color-danger-text: #B93A3A;  /* error text       5.35:1 on cream */
+
+      --font-heading: "Fraunces", Georgia, serif;
+      --font-body:    "DM Sans", ui-sans-serif, system-ui, sans-serif;
+
+      --radius-sm: 8px;   --radius-md: 12px;  --radius-lg: 16px;
+      --radius-xl: 20px;  --radius-2xl: 28px; --radius-full: 9999px;
+
+      --shadow-soft:   0 2px 8px  rgba(74,44,94,0.06);
+      --shadow-medium: 0 4px 16px rgba(74,44,94,0.10);
+      --shadow-strong: 0 8px 32px rgba(74,44,94,0.14);
+
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    :root {
+      /* End point is #9A4A34, not terracotta, so white text holds
+         11.58:1 -> 6.17:1 across the whole sweep. */
+      --brand-gradient: linear-gradient(135deg, #4A2C5E 0%, #9A4A34 100%);
+
+      --page-wash:
+        radial-gradient(at 18% 82%, rgba(123,158,107,0.13) 0%, transparent 52%),
+        radial-gradient(at 82% 16%, rgba(196,93,62,0.10) 0%, transparent 52%),
+        radial-gradient(at 50% 50%, rgba(74,44,94,0.06) 0%, transparent 62%),
+        #FFF8F0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--color-cream);
+      color: var(--color-ink);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    * { -webkit-tap-highlight-color: transparent; }
+
+    .font-heading { font-family: var(--font-heading); }
+
+    .page-enter { animation: page-in 0.35s var(--ease-out-expo) both; }
+    @keyframes page-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--color-plum);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+Also delete any shadcn index.css blocks for --primary, --secondary, --accent,
+--muted, --border, --ring, --card, --popover and their @theme inline mappings.
+A shadcn button that renders blue means the old mapping is still live.
+
+
+--------------------------------------------------------------------------------
+1.2  CONTRAST CONTRACT - measured, not vibes
+--------------------------------------------------------------------------------
+
+Real WCAG 2.1 results. Body text needs 4.5:1. Large text (24px+, or 18.66px
+bold+) and UI borders or icons need 3:1.
+
+PASSES - safe for any text:
+  ink #2A2A2A on cream 13.63 | on white 14.35
+  plum on cream 11.00 | on cream-dark 9.99
+  cream / white on plum 11.00 / 11.58
+  plum-light on cream 6.84
+  cream / white on plum-light 6.84 / 7.20
+  ink-muted #6A6865 on cream 5.27
+  danger-text on cream 5.35
+  terracotta-dark on cream / white 5.75 / 6.06
+  sage-dark on cream / white 4.58 / 4.83
+  ink-faint #80698A on cream 4.63
+  plum on sage-light 5.31
+  white on #9A4A34 6.17
+
+FAILS - banned outright:
+  sage on cream / white                 2.87 / 3.02
+      -> sage-dark for text. sage is fills, rings, dots, chart strokes only.
+  cream or white on sage / sage-light   2.87 / 3.02 / 2.18
+      -> plum on sage-light (5.31), or a sage/12 tint with sage-dark text.
+  warm-gray on cream / white            3.28 / 3.45
+      -> ink-muted for secondary text. warm-gray is icons, disabled only.
+  danger as body text                   4.16
+      -> danger-text for the text, danger for the border and icon.
+
+Also banned: warm-gray-light on cream (2.06) and warm-gray-lighter on cream
+(1.24). warm-gray-lighter is a BORDER COLOUR ONLY.
+
+BORDERLINE - large text or UI sizes only:
+  terracotta on cream 4.00 | white on terracotta 4.21 |
+  sage-dark on a sage/12 tint 3.96
+  If a tinted chip needs real text, use plum on the tint (9.26) or darken the
+  tint to sage/8.
+
+THE GRADIENT PROBLEM
+  plum -> terracotta gives white text 11.58:1 at the plum end but 4.21:1 at the
+  terracotta end, so it fails. The seed ends at #9A4A34 instead: 11.58 -> 6.17.
+  Use --brand-gradient. Never re-add bare terracotta as a gradient endpoint
+  behind text. (plum -> terracotta at 24px+ display type is acceptable.)
+
+LOCKED TEXT COLOUR ASSIGNMENTS
+  Body                              -> text-ink
+  Secondary, descriptions, helper   -> text-ink-muted
+  Meta, timestamps, axis labels     -> text-ink-faint
+  Warm emphasis, specialty, streak  -> text-terracotta-dark
+  Calm, success, grounded           -> text-sage-dark
+  Errors                            -> text-danger-text in border-danger/30
+                                       bg-danger/5
+  Text on plum or plum-light        -> text-cream
+  Text on any sage fill             -> text-plum
+  Labels in tinted chips            -> text-plum unless the chip is plum-tinted
+
+
+--------------------------------------------------------------------------------
+1.3  PER-PAGE COLOUR ASSIGNMENT (for the 5 pages in this part)
+--------------------------------------------------------------------------------
+
+  Route             Accent      Gradient  Notes
+  ----------------  ----------  --------  ---------------------------
+  /landing          terracotta  hero only Sage radial wash behind the
+                                          preview. Avatars cycle plum,
+                                          terracotta, sage
+  /login            plum        no        Plum right panel, plum-light
+                                          avatar initials
+  /app  Dashboard   terracotta  panel 1   "Private by design" is a SOLID
+                                          plum card, not a gradient
+  /app/journal      plum        no        Editor cream-dark, page bg cream
+  /app/insights     plum        no        Charts single-hue plum to
+                                          terracotta. Insight dots sage or
+                                          terracotta only
+
+CHROME COLOUR - same on every page
+  SideNav    bg-cream/80 backdrop-blur, border-warm-gray-lighter. Active item
+             bg-plum/10 text-plum. The crisis item gets a hairline divider
+             above it and a SAGE icon, not red.
+  TopBar     bg-cream/80 backdrop-blur, border-b border-warm-gray-lighter.
+             Search bg-white/70. Bell dot terracotta.
+  BottomNav  glass, border-t border-white/50. Active text-plum, scale 110.
+  Card       bg-white/75, border-warm-gray-lighter/60, shadow-soft.
+  Input      bg-cream-dark, focus border plum plus
+             0 0 0 3px rgba(74,44,94,0.1).
+  Skeleton   cream-dark to warm-gray-lighter to cream-dark shimmer, 1.5s.
+
+COLOUR BUDGET PER VIEWPORT: one gradient, one accent, plum for any interactive
+or active state, danger only for genuine errors or deletes.
+
+
+--------------------------------------------------------------------------------
+1.4  TYPE
+--------------------------------------------------------------------------------
+
+Headings: Fraunces (400-700). Body and UI: DM Sans (400, 500, 600). Never
+Inter, never Roboto. Google Fonts, display=swap.
+
+  Page title    text-3xl sm:text-4xl  Fraunces 600  leading-[1.15]  -0.01em
+  Section title text-xl sm:text-2xl   Fraunces 600
+  Card title    text-base             Fraunces 600
+  Body          text-sm sm:text-[15px] DM Sans 400  leading-6
+  Eyebrow       text-xs  DM Sans 600  uppercase  tracking-[0.16em]
+  Meta          text-xs  text-ink-faint
+
+Prose max-w-prose, about 65ch. Never full-width paragraphs.
+
+
+--------------------------------------------------------------------------------
+1.5  RADII, ELEVATION, SURFACES
+--------------------------------------------------------------------------------
+
+RADII - sm 8 / md 12 / lg 16 / xl 20 / 2xl 28 / full 9999
+  Buttons, chips, avatars, toggles -> rounded-full
+  Inputs                           -> rounded-lg
+  Cards                            -> rounded-xl (20px)
+  Hero panels, sheets, modals      -> rounded-2xl (28px)
+Never mix radii inside one component.
+
+ELEVATION - three levels, warm-tinted, never pure black at high alpha:
+  --shadow-soft:   0 2px 8px  rgba(74,44,94,0.06)
+  --shadow-medium: 0 4px 16px rgba(74,44,94,0.10)
+  --shadow-strong: 0 8px 32px rgba(74,44,94,0.14)
+Never shadow-2xl, never a glow, never a coloured drop shadow.
+
+SURFACES
+  Page          bg-cream
+  Card          bg-white/75 + border-warm-gray-lighter/60 + shadow-soft
+  Inset         bg-cream-dark, no border
+  Glass         backdrop-blur + bg-white/70, ONLY for floating chrome. Never a
+                card inside a card.
+  Gradient      --brand-gradient, cream text, rounded-2xl. MAXIMUM ONE per
+                screen, never a plain heading banner.
+  Page texture  at most one soft mesh at 8-15% opacity. No animated blobs, no
+                grain overlay, no floating orbs.
+
+
+--------------------------------------------------------------------------------
+1.6  MOTION
+--------------------------------------------------------------------------------
+
+framer-motion, easing cubic-bezier(0.16, 1, 0.3, 1)
+
+  Enter   opacity 0 to 1, y 12 to 0, 350ms. Stagger children 40ms, max 5.
+  Hover   y -2 on cards, scale 1.03 on buttons.
+  Tap     scale 0.97.
+  Reduced prefers-reduced-motion respected everywhere, duration 0.
+  No looping ambient animation. No pulsing hearts, no bobbing. A calm app does
+  not move when you are not touching it. Cross-fade page transitions only.
+
+
+--------------------------------------------------------------------------------
+1.7  ICONS
+--------------------------------------------------------------------------------
+
+lucide-react, strokeWidth 1.75 (2 for active nav), size 16 to 24. Always paired
+with a text label unless a well-known standalone control.
+Emoji are CONTENT, not UI chrome. Allowed only in the mood scale, activity
+tiles, chat and room identity, and story reactions. Never a button icon, never a
+nav icon, never decoration.
+
+
+================================================================================
+SECTION 2 - ANTI-SLOP CONSTITUTION (NON-NEGOTIABLE)
+================================================================================
+
+FORBIDDEN COLOUR
+  - No indigo, violet or purple-blue gradients. No #6366F1, #8B5CF6, #A855F7.
+  - No blue as a UI colour. No sky-500, no cyan, no neon.
+  - No emerald or green "success" chips (#22C55E). Use sage.
+  - No dark-mode toggle. Dark surfaces are plum or plum-dark, never #0F172A.
+  - No 18th colour. No hardcoded hex in any component file.
+
+FORBIDDEN CONTRAST PAIRINGS
+  - text-sage on cream or white (2.87). Use text-sage-dark.
+  - Cream or white text on a sage or sage-light fill (2.87 / 2.18).
+  - text-warm-gray for any text (3.28). Use text-ink-muted.
+  - text-danger for error copy (4.16). Use text-danger-text.
+  - Bare terracotta as a gradient endpoint behind white text (4.21).
+  - warm-gray-lighter as text or a meaningful icon (1.24).
+
+FORBIDDEN TYPE
+  - No Inter, no Geist, no system-ui default.
+  - No font-black headings. No uppercase paragraphs. No more than one
+    uppercase-eyebrow element per card.
+  - No centred text blocks longer than two lines.
+  - No 56px+ hero type inside the app. The landing page may go to 64px once.
+
+FORBIDDEN LAYOUT CLICHES
+  - No hero made of a big centred headline, subheadline, two buttons and an
+    abstract blob. The landing hero is left-aligned, split, with a real product
+    preview.
+  - No row of 3 or 4 identical icon+title+text feature cards. Features get
+    different layouts: a wide row, a list, a split, a quote.
+  - No row of 4 identical KPI cards with big numbers and green up-arrows. Stats
+    are one card with an internal layout, or hairline-separated strips.
+  - No icon-in-a-rounded-square tile above every heading. One accent element
+    per section, sometimes none.
+  - No equal-height 3-across card grid as the default page shape. Use
+    lg:grid-cols-[1.15fr_.85fr] asymmetry or vertical lists.
+  - No sidebar + 4 metric cards + table + chart dashboard template.
+  - No max-w-4xl mx-auto text-center for content pages.
+  - No floating action button unless the page is genuinely a compose surface.
+
+FORBIDDEN DECORATION
+  - No 3D or isometric illustrations, no stock-photo grids, no Unsplash
+    hotlinks. Use a CSS or SVG abstract shape in our palette if an image is
+    truly needed.
+  - No glassmorphism on every surface. No neon glow. No gradient borders.
+  - No animated gradient text except the wordmark.
+  - No confetti. No scattered sparkle icons.
+  - No fake SaaS data. No "Trusted by 10,000+ students", no "4.9/5 from 2,000
+    reviews", no fabricated logo wall, no pricing table. Testimonials are plain
+    text quotes with an initial avatar, landing page only.
+
+FORBIDDEN COMPONENTS AND SMELLS
+  - No default shadcn Card or Dialog look. Restyle or rebuild.
+  - No alert(), no confirm(), no TODO in shipped UI.
+  - No horizontal scroll on desktop.
+  - No layout shift on load. Skeletons at the exact final size.
+  - No danger red for "cancel". Cancel is ghost.
+
+COPY
+  - Plain, warm, second person. Short sentences. No marketing throat-clearing.
+  - Banned: "elevate", "unlock", "journey", "holistic", "empower",
+    "game-changer", "you are not alone in this journey", "dive in", "take care
+    of yourself", "start your free trial".
+  - Banned emoji in body copy.
+  - Specific believable numbers: "6 check-ins this week", not "84% of your
+    potential".
+  - Error copy says what happened and what to do next. Never "Something went
+    wrong."
+
+
+================================================================================
+SECTION 3 - COMPONENT LIBRARY
+================================================================================
+
+Put them in src/components/ui/ and src/components/layout/. Every page composes
+from these. No page-local one-off button, card or input styles.
+
+PRIMITIVES
+  Button      primary (gradient, cream text), secondary (cream-dark, hairline),
+              ghost, danger. Sizes sm h-9, md h-11, lg h-13. All rounded-full.
+              Minimum tap target 44px.
+  Card        padding sm p-4, md p-6, lg p-8. Optional hover lift. bg-white/75
+              plus hairline plus shadow-soft.
+  Input       bg-cream-dark. 1.5px transparent border that becomes plum on
+  Textarea    focus with a 0 0 0 3px rgba(74,44,94,0.1) ring. Min height 48px.
+              rounded-lg. Error is a danger border plus helper text below,
+              never a tooltip.
+  Avatar      initials on plum, terracotta or sage, rounded-full, sizes 32, 40,
+              56, 72. Online dot is sage.
+  Badge       sage/10 text-sage-dark, terracotta/10 text-terracotta-dark,
+              plum/10 text-plum. Tinted background, dark text, never solid.
+  Tabs        standard pattern, plum active indicator.
+  Chip        filter pills, rounded-full, plum border and plum/5 fill when
+              active.
+  Switch      plum when on, cream-dark track when off.
+  Slider      plum thumb, terracotta-filled track.
+  Accordion   rounded-xl row, plum + that rotates to x when open.
+  Sheet       bottom sheet on mobile, side panel at 1024+.
+  Dialog      plum confirm, danger for destructive confirmation.
+  EmptyState  one line of plain text plus one action. No illustration.
+  Skeleton    cream-dark to warm-gray-lighter to cream-dark shimmer, 1.5s.
+  StatCard    used SPARINGLY. See the KPI-card ban in Section 2.
+  SectionHeader  eyebrow plus serif title plus optional right-side action. The
+              standard page section opener. Use it instead of ad-hoc h2s.
+  PageHeader  page title, one-line description, primary action. Standard top of
+              every content page.
+  MoodScale   6-point emoji scale.
+
+CHROME
+  AppShell     owns the responsive switch. Pages never render nav.
+  SideNav      240px fixed. Cream/80 with blur. Wordmark top, Fraunces bold,
+               gradient text. 8 items: Dashboard, Journal, Connect, Insights,
+               Chats, Activities, Counsellors, Settings. Active is bg-plum/10
+               plus text-plum plus strokeWidth 2.4. A separated "Crisis
+               Support" item above the user block, hairline divider above it,
+               sage icon not red. User block pinned bottom with avatar, name,
+               role, sign-out icon button.
+  TopBar       desktop only, h-16. Page title, a real search field
+               (bg-white/70, rounded-full, icon plus placeholder), bell with a
+               terracotta dot, user chip. Hairline bottom border, bg-cream/80
+               backdrop-blur.
+  MobileHeader h-14. Back arrow when the page sets showBack, else hamburger.
+               Title in Fraunces 18px. Bell on the right.
+  BottomNav    mobile and tablet only, 5 items: Dashboard, Journal, Connect,
+               Insights, Chats. h-14 plus safe-area padding, glass, hairline top
+               border. Active is text-plum with a 1.1 scale icon.
+  AppNav       a render-nothing component each page mounts to declare its
+               title, whether to show a back button, and whether to hide the
+               bottom nav. The chat and activity-player pages hide it.
+
+
+================================================================================
+SECTION 4 - RESPONSIVE CONTRACT
+================================================================================
+
+MOBILE (under 768)
+  MobileHeader plus BottomNav, no sidebar. Content padding 16px. Sheets rise
+  from the bottom. Primary CTA inline in flow or a sticky bar above the nav.
+
+TABLET (768 to 1023)
+  Same chrome as mobile. Content max-width 720px, 24px padding.
+
+DESKTOP (1024 and above)
+  240px SideNav plus TopBar. No BottomNav, no MobileHeader. Content max-width
+  1080px, 24px padding. Asymmetric grids (1.15fr / 0.85fr) welcome. Optional
+  288px right rail for contextual panels.
+
+Tap targets 44px and above. pb-safe above the bottom nav. No horizontal scroll
+at 320px width.
+
+
+================================================================================
+SECTION 5 - CONTENT MODEL (USE THIS, INVENT NOTHING)
+================================================================================
+
+MOOD SCALE, in order, with these exact labels and scores:
+  Happy 5, Peaceful 4, Neutral 3, Frustrated 2, Anxious 2, Sad 1.
+
+ROOMS for chat: Quiet mornings, Exam overwhelm, Anonymous support, plus 3 more
+  with the same plain naming style.
+
+COUNSELLORS (Indian names, realistic pricing):
+  Dr. Ananya Rao  - Anxiety, Self-esteem, 12 yrs, Rs 800/session, Online and
+                    In-person (Bengaluru)
+  Rhea Mehta, M.A. - Students, Life transitions, 8 yrs, Rs 600/session, Online
+  Dr. Kabir Shah  - Stress, Relationships, 15 yrs, Rs 1,200/session, Online
+  Each has a verification badge, languages spoken, and a next-available slot.
+
+ACTIVITIES:
+  5-Minute Meditation (5 min), Gratitude Journaling (10 min),
+  4-7-8 Breathing (6 min), Grounding 5-4-3-2-1 (4 min),
+  Evening body scan (8 min), Worry-time planning (12 min).
+  Each has: title, one-line description, duration, level, and a sage, plum or
+  terracotta accent. Not a photo.
+
+JOURNAL PROMPTS: write 8 real ones, plain and specific. For example "What took
+  more energy than it should have today?" and "Who would you like to be
+  gentler with?"
+
+CRISIS RESOURCES (India, real numbers):
+  KIRAN 14416, Vandrevala Foundation 1860-2662-345, iCall 9152987821,
+  Tele-MANAS 14416. Tap-to-call cards with hours, not a wall of text.
+
+Write all seed data as typed constants in src/data/. No content inline in page
+components.
+
+
+================================================================================
+SECTION 6 - CHARTS (HAND-BUILT SVG, NO LIBRARY)
+================================================================================
+
+  - Single-hue sequential only: plum to terracotta. No rainbow, no
+    multi-colour bars, no default library palette, no 3D, no 6-slice doughnut.
+  - No gridlines except a faint warm-gray-lighter baseline. Axis labels
+    text-xs text-ink-faint.
+  - Rounded line caps, 2.5px stroke, area fill at 8% opacity. Bars rounded-t-lg,
+    8 to 16px wide with real gaps.
+  - Every chart sits in a Card with a plain-language title above it ("Your last
+    14 days") and a one-line takeaway below in text-sm text-ink-muted. A chart
+    with no takeaway is not finished.
+
+
+================================================================================
+SECTION 7 - BUILD ONLY THESE 5 ROUTES
+================================================================================
+
+Structure for every content page: PageHeader, then primary content, then
+secondary and support content. max-w-6xl container, space-y-6, pb-8.
+
+--------------------------------------------------------------------------------
+/landing
+--------------------------------------------------------------------------------
+Sticky translucent header: wordmark left, anchors (How it works, Features,
+Safety) centre, "Sign in" ghost plus "Get started" primary right.
+
+Hero is SPLIT and LEFT-ALIGNED. Left: eyebrow "Built for students, by students",
+Fraunces 64px headline "A quieter place to figure things out", two lines of
+plain copy, a primary plus ghost CTA, and three small trust lines (Anonymous by
+default, Verified counsellors, Crisis support 24/7) as text with sage icons,
+not badges. Right: a real product preview, a tilted rounded-2xl app window
+showing the actual mood check-in card built from the real components, on a soft
+sage radial wash.
+
+Then six sections, each with a DIFFERENT layout:
+  1. A 3-step "How it works" as numbered rows with hairlines.
+  2. Features as a 2x2 asymmetric grid with one full-width plum gradient panel.
+  3. A full-bleed cream-dark safety band explaining anonymity and crisis
+     access.
+  4. A counsellor strip: 3 avatars plus names. No star ratings.
+  5. Two plain-text quotes with initial avatars.
+  6. A closing CTA on cream, not a gradient card.
+
+Footer: 3 link columns, plus a one-line "MindCircle is not a substitute for
+professional care." The footer must state that.
+
+--------------------------------------------------------------------------------
+/login
+--------------------------------------------------------------------------------
+Split layout at 1024 and above. Left: the form, max 400px. Right: a plum panel
+with a soft radial wash, one short reassuring line, and 2 to 3 rotating student
+reflections as plain quotes. Below 1024 the panel is dropped.
+
+Email plus password. "Forgot password?" is a link, not a button. Full-width
+primary. A divider with "or", then an OTP option. Labels above inputs, never
+placeholder-as-label. Password field has a show/hide toggle. Inline validation
+on blur with a danger border and helper text.
+
+--------------------------------------------------------------------------------
+/app  (Dashboard) - the screen that must feel like the product
+--------------------------------------------------------------------------------
+1. A gradient panel, rounded-2xl: the date, "Good morning, {name}.", one warm
+   line, one primary CTA, and two soft radial washes inside it. Nothing else on
+   the gradient.
+2. Two columns at 1.15fr / 0.85fr. Left: MoodCheckin, a 6-point emoji scale with
+   a word label under the selected emoji, an optional one-line note, a Save
+   button only enabled after a pick, and a success confirmation as a sage/10
+   inline toast that auto-dismisses. Right: a single "This week" card with ONE
+   number and three hairline-separated rows beneath it (check-ins, journal
+   days, streak), plus a text link to Insights. Not four KPI cards.
+3. Two columns. Left: "Try something that helps" with 3 activity rows, each a
+   48px rounded-xl tinted tile, title, duration, and a chevron that nudges right
+   on hover. Right: a SOLID plum card, "Private by design", 2 short lines, one
+   text link to privacy settings.
+4. Full-width hairline-separated row: "Continue your reflection" with the last
+   entry time and a secondary button to the journal.
+
+Empty state: when there is no history at all, replace 2 and 4 with a single
+EmptyState inviting the first check-in. Do not render fake zeros as if real.
+
+--------------------------------------------------------------------------------
+/app/journal
+--------------------------------------------------------------------------------
+PageHeader "Journal" plus a "New entry" primary.
+Split: left is the editor, right rail (1024 and above) is a prompt library.
+Editor: a Textarea that grows, set in font-heading text-xl so writing feels like
+writing. A title field. A mood picker in the composer. A prompt chip row above
+the editor ("Need a prompt?"). An autosave indicator ("Saved 2 min ago" - never
+a flashing "Saving!"). A sticky bottom action row: "Save draft" ghost plus
+"Publish to private journal" primary.
+Below the editor, a chronological list of entries: date group headers, title in
+Fraunces, a 2-line clamped preview, mood emoji, word count, and a kebab menu
+(Edit, Delete with a danger confirm in a Dialog, never window.confirm). Search
+plus a filter chip row (All, Drafts, Favourites). A lock icon and "Only you can
+see this" caption under the composer.
+
+--------------------------------------------------------------------------------
+/app/insights
+--------------------------------------------------------------------------------
+PageHeader "Insights" plus a range chip row (7 days, 30 days, 3 months).
+1. Big card: a mood line chart over time, per Section 6 rules, with a takeaway
+   line.
+2. Two columns. Left: mood distribution as a single-hue horizontal bar list
+   (label, bar, count - no pie). Right: a hairline-separated stat block (average
+   mood, best day, check-in streak, journal entries) - ONE card with rows
+   divided by hairlines, not four cards.
+3. Full-width "Patterns we noticed": 3 insight rows, each a sentence, a sage or
+   terracotta dot, and a supporting number. Written as observations, never as
+   diagnosis. If there is not enough data, this card shows an EmptyState asking
+   for 3 more check-ins.
+4. Full-width: a weekly reflection card in cream-dark with two prompts and a
+   one-line textarea.
+
+
+================================================================================
+SECTION 8 - CROSS-CUTTING REQUIREMENTS
+================================================================================
+
+STATES
+  Every data-backed view implements all four: loading (skeletons at the final
+  size, never a whole-page spinner), empty (one EmptyState with one action),
+  error (an inline danger-bordered card, plain copy, a "Try again" secondary),
+  and success. No alert().
+
+ACCESSIBILITY
+  Semantic landmarks, one h1 per page, visible focus-visible rings in plum,
+  aria-expanded on accordions and chips, aria-current="page" on active nav,
+  4.5:1 minimum contrast, full keyboard operability, prefers-reduced-motion
+  honoured.
+
+DATA
+  All seed content in src/data/*.ts as typed exports. Components receive props.
+  Pages own state around a small typed data hook per resource. No fetching
+  inline in JSX.
+
+FORMATTING
+  2-space indent, single quotes, no semicolons. Named exports for layout and
+  shared components, default exports for pages. One component per file. The
+  filename matches the component. Type everything, no any.
+
+
+================================================================================
+NOW: BUILD, THEN STOP
+================================================================================
+
+Build the foundation and the 5 routes above. Then STOP and:
+
+  1. Report what you built for each of the 5 routes.
+  2. Report what is still placeholder or stubbed.
+  3. Show each route rendered at 390px, 834px and 1440px.
+  4. Confirm the theme seed is in place and no default shadcn blue remains.
+
+Do NOT start /app/connect, /app/chats, /app/chat/:id, /app/activities,
+/app/activities/:id, /app/crisis, /app/assessment, /app/counsellors,
+/app/counsellor/:id, /app/story/create, /app/profile, /app/settings,
+/app/help/faq, /app/help/support, /signup, /verify-otp, /onboarding.
+I will send Part 2 after I review.
+
+================================================================================
+END OF PART 1
+================================================================================

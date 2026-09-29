@@ -4,7 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Heart, Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Heart, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const pageTransition = {
   initial: { opacity: 0, y: 12 },
@@ -53,10 +54,38 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    router.push('/verify-otp')
+    setError('')
+    setLoading(true)
+
+    const supabase = createClient()
+    const { error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: name },
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/app/onboarding`,
+      },
+    })
+
+    setLoading(false)
+
+    if (authError) {
+      setError(
+        authError.message === 'User already registered'
+          ? 'This email is already registered. Try logging in instead.'
+          : authError.message
+      )
+      return
+    }
+
+    // Hand the email along so the OTP screen can resend & verify the code.
+    await router.push(`/verify-otp?email=${encodeURIComponent(email)}&mode=signup`)
+    router.refresh()
   }
 
   return (
@@ -193,12 +222,29 @@ export default function SignupPage() {
               </div>
             </div>
 
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-terracotta/10 text-terracotta text-sm font-medium">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
-              className="btn-gradient w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+              disabled={loading}
+              className="btn-gradient w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Create Account <ArrowRight className="w-4 h-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Creating account...
+                </>
+              ) : (
+                <>
+                  Create Account <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 

@@ -1,0 +1,255 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
+
+const pageTransition = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -12 },
+}
+
+/* ── Social Login Icons ───────────────────────────────────── */
+
+function GoogleIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24">
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
+      />
+    </svg>
+  )
+}
+
+function AppleIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.98-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+    </svg>
+  )
+}
+
+/* ── Page ─────────────────────────────────────────────────── */
+
+export default function LoginPage() {
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+    if (signInError) {
+      setError(signInError.message)
+      return
+    }
+    router.push('/app')
+  }
+
+  return (
+    <motion.div
+      variants={pageTransition}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="min-h-screen flex"
+    >
+      {/* ── Left: Form ──────────────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-8 py-12">
+        <div className="w-full max-w-md">
+          {/* Logo */}
+          <Link href="/landing" className="flex items-center gap-2 mb-10">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-plum to-terracotta flex items-center justify-center">
+              <Heart className="w-4 h-4 text-cream" />
+            </div>
+            <span className="font-heading text-xl font-bold gradient-text">
+              MindCircle
+            </span>
+          </Link>
+
+          <h1 className="font-heading text-3xl font-bold text-charcoal mb-2">
+            Welcome back
+          </h1>
+          <p className="text-warm-gray mb-8">
+            Log in to continue your wellness journey.
+          </p>
+
+          {/* Social buttons */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2 py-3 rounded-xl border border-warm-gray-lighter bg-white hover:bg-cream-dark transition-colors text-sm font-medium text-charcoal"
+            >
+              <GoogleIcon />
+              Google
+            </button>
+            <button
+              type="button"
+              className="flex items-center justify-center gap-2 py-3 rounded-xl border border-warm-gray-lighter bg-white hover:bg-cream-dark transition-colors text-sm font-medium text-charcoal"
+            >
+              <AppleIcon />
+              Apple
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-1 h-px bg-warm-gray-lighter" />
+            <span className="text-xs text-warm-gray">or continue with email</span>
+            <div className="flex-1 h-px bg-warm-gray-lighter" />
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email */}
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-charcoal mb-1.5"
+              >
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray" />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="input-warm w-full pl-11"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label
+                  htmlFor="password"
+                  className="text-sm font-medium text-charcoal"
+                >
+                  Password
+                </label>
+                <Link
+                  href="#"
+                  className="text-xs text-plum font-medium hover:text-plum-dark transition-colors"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-gray" />
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="input-warm w-full pl-11 pr-11"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-warm-gray hover:text-charcoal transition-colors"
+                  aria-label="Toggle password visibility"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit */}
+            {error && <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-gradient w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+            >
+              {loading ? 'Logging in…' : 'Log In'} {!loading && <ArrowRight className="w-4 h-4" />}
+            </button>
+          </form>
+
+          {/* Sign up link */}
+          <p className="text-center text-sm text-warm-gray mt-6">
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/signup"
+              className="text-plum font-semibold hover:text-plum-dark transition-colors"
+            >
+              Sign up
+            </Link>
+          </p>
+        </div>
+      </div>
+
+      {/* ── Right: Illustration (desktop) ───────────────────── */}
+      <div className="hidden lg:flex flex-1 mesh-gradient items-center justify-center relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-32 left-24 w-36 h-36 rounded-full bg-sage/10 blob-shape" />
+        <div className="absolute bottom-24 right-24 w-28 h-28 rounded-full bg-terracotta/10 blob-shape" />
+        <div className="absolute top-1/3 right-1/4 w-20 h-20 rounded-full bg-plum/10 blob-shape" />
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="relative z-10 max-w-sm text-center px-8"
+        >
+          {/* Decorative circle cluster */}
+          <div className="relative w-48 h-48 mx-auto mb-10">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-40 h-40 rounded-full bg-gradient-to-br from-sage/15 to-plum/15 animate-[spin_25s_linear_infinite]" />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-terracotta/20 to-sage/20 blob-shape" />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-plum to-terracotta flex items-center justify-center shadow-strong">
+                <Heart className="w-7 h-7 text-cream" />
+              </div>
+            </div>
+          </div>
+
+          <blockquote className="font-heading text-xl font-medium text-charcoal italic leading-relaxed">
+            &ldquo;You are not your illness. You have an individual story to tell;
+            you have a name, a history, a personality.&rdquo;
+          </blockquote>
+          <p className="text-sm text-warm-gray mt-4">-- Julia Julian</p>
+        </motion.div>
+      </div>
+    </motion.div>
+  )
+}

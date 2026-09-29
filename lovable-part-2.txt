@@ -1,0 +1,292 @@
+================================================================================
+MINDCIRCLE - LOVABLE BUILD - PART 2 OF 3
+Community + support routes.  9 routes.  Foundation already applied.
+================================================================================
+
+
+PART 1 is done. The theme seed, the design tokens, the contrast contract, the
+component library and the responsive shell are already in place. Do not
+recreate them. Do not re-introduce any default shadcn colour.
+
+QUICK TOKEN REFERENCE (for checking - do not redefine these):
+  cream #FFF8F0   cream-dark #F5EDE3   plum #4A2C5E      plum-light #6B4A80
+  plum-dark #3A1F4A   terracotta #C45D3E   terracotta-light #D4785C
+  terracotta-dark #A04830   sage #7B9E6B   sage-light #9BB88C
+  sage-dark #5C7A4F   charcoal #2A2A2A   warm-gray #8A8A8A
+  warm-gray-light #B0B0B0   warm-gray-lighter #E8E0D8   danger #D64545
+  white #FFFFFF
+  Text aliases: ink #2A2A2A, ink-muted #6A6865, ink-faint #80698A,
+  danger-text #B93A3A
+  Signature gradient: linear-gradient(135deg, #4A2C5E 0%, #9A4A34 100%)
+  Fonts: Fraunces (headings), DM Sans (body)
+  Card: bg-white/75 + border-warm-gray-lighter/60 + shadow-soft
+  Input: bg-cream-dark, focus border plum
+
+All rules from Part 1 still apply in full:
+
+  - The 17 palette hexes are FROZEN. No 18th colour. No hardcoded hex in any
+    component file.
+  - Text colours: body text-ink, secondary text-ink-muted, meta text-ink-faint,
+    warm emphasis text-terracotta-dark, calm text-sage-dark, errors
+    text-danger-text, text on plum text-cream, text on sage fill text-plum.
+  - sage is never text. warm-gray is never text. danger is never body text.
+    warm-gray-lighter is never text.
+  - One gradient per screen maximum, and it must be --brand-gradient.
+  - No indigo, violet, blue, cyan, emerald, neon or glow. No Inter. No
+    shadow-2xl. No rounded-3xl. No animate-bounce, animate-pulse or
+    animate-spin. No alert() or confirm(). No TODO.
+  - Emoji are content, not UI chrome. Never a button icon or a nav icon.
+  - No row of 3 or 4 identical cards. No 4-card KPI row. No 3-across uniform
+    grid as a page's default shape. Asymmetric 1.15fr / 0.85fr is preferred.
+  - Every data-backed view has loading, empty, error and success states.
+  - Copy is plain and warm. Banned: elevate, unlock, journey, holistic, empower,
+    game-changer, dive in, start your free trial. No emoji in body copy.
+
+Build ONLY the 9 routes below, in this order. Do not touch Part 1 routes except
+to reuse components from them.
+
+
+================================================================================
+ROUTE 1 of 9 - /app/connect        Accent: sage.  No gradient.
+================================================================================
+PageHeader "Connect".
+
+1. A search field plus 4 filter chips (All rooms, Anxiety, Academic stress,
+   Loneliness). Chips are rounded-full, plum border and plum/5 fill when active.
+
+2. The room list as full-width rows, NOT a 3-across grid. Each row: a 48px
+   emoji tile on a tinted circle, the name in Fraunces, a one-line description,
+   a member count, a live dot (sage, 2px) when someone is typing, and a "Join
+   quietly" secondary button. Rows separated by hairlines inside one Card.
+   Room tiles cycle sage/15, plum/10, terracotta/10.
+
+3. Side or below: "People you may relate with" - 3 anonymous match cards with an
+   initials avatar, an alias only (for example "quiet-sparrow-42"),
+   shared-interest chips, and a "Say hello" ghost button. Add one line saying
+   aliases are generated and are never real names.
+
+Empty state: "No rooms match that yet" plus a "Suggest a room" secondary action.
+
+Loading state: skeleton rows at the exact final row size.
+
+
+================================================================================
+ROUTE 2 of 9 - /app/chats          Accent: plum.  No gradient.
+================================================================================
+PageHeader "Chats" plus a "New chat" primary.
+
+A search field, then 3 filter chips (All, Unread, Rooms). One Card containing
+rows: a 48px tile, the name, a preview truncated to one line, a relative time,
+and a terracotta unread dot. Unread rows get bg-plum at 3% opacity.
+
+Below the list, a single centred text-xs text-ink-faint line with a lock icon:
+"Anonymous and private by default."
+
+Right rail (1024 and above, 288px): 2 small cards - "People you're comfortable
+with", and a sage/10 safety card listing the room guidelines as three short
+rules.
+
+Empty state: "No conversations yet" plus a "Start one" primary.
+
+
+================================================================================
+ROUTE 3 of 9 - /app/chat/:id       Accent: plum.  No gradient.
+================================================================================
+Hide the bottom nav on this route. Full-height conversation.
+
+Right rail (1024 and above, 288px): room identity, an 18-member count, and a
+"Leave room" ghost button with danger text.
+
+Main: a room header (emoji tile, name, "Anonymous room - 18 here"), then the
+message list.
+  - Others' messages: bg-cream-dark with a rounded-bl-sm corner.
+  - Mine: bg-plum with cream text and a rounded-br-sm corner.
+  - Max 80% width, text-sm leading-6.
+  - Day dividers as centred text-xs labels.
+  - A small lock glyph on anonymous messages.
+
+Composer: sticky, glass. A Textarea that grows to 3 lines then scrolls. Send as
+a 44px rounded-full plum button. Enter sends, Shift+Enter for a newline. A
+character hint and a row of 4 reaction chips.
+
+A pinned cream-dark community-guideline strip above the composer. A typing
+indicator as three sage dots.
+
+Loading state: skeleton messages at the exact final message size.
+
+
+================================================================================
+ROUTE 4 of 9 - /app/activities     Accent: sage.  No gradient.
+================================================================================
+PageHeader "Activities" plus a duration chip row (Under 5 min, 10 min, Any).
+
+NOT a uniform 3-across grid. Layout:
+  - One featured card: full width, sage/10 wash, a larger tile, title,
+    description, duration, level, a "Start" primary.
+  - Then the remaining activities as full-width rows grouped under two
+    SectionHeader hairlines: "Calm the body" and "Steady the mind".
+  - Each row: a 48px tinted tile, the title, a one-line description, duration
+    and level as text-xs, and a circular play icon button on the right.
+  - Completed activities get a sage check and "Done - 5 min" instead of the
+    play button.
+  - Include a "Start where you left off" card at the top if any activity is in
+    progress.
+
+Activity tile accents cycle sage, plum, terracotta.
+
+Empty state: "Nothing started yet" plus a primary that scrolls to the featured
+card.
+
+
+================================================================================
+ROUTE 5 of 9 - /app/activities/:id  Accent: sage.  No gradient.
+================================================================================
+An experience, not a form. Hide the bottom nav.
+
+1. Header: back, emoji tile, title, duration, level.
+
+2. The activity surface, one per type:
+   Breathing  - a 180px circle that scales 4s in, 4s hold, 6s out, with a phase
+                label and a live countdown driven by a real timer. Sage fill at
+                15%, plum ring. Start, pause, reset. Below it, "Inhale, Hold,
+                Exhale" as three labelled dots that light in sequence.
+   Meditation / body scan - a timed player with elapsed over total, a thin
+                progress line, play-pause, and a rotating line of plain guidance
+                text that changes every 30s.
+   Journaling - a Textarea with the prompt as a SectionHeader above it, and a
+                "Save to journal" primary.
+   Grounding 5-4-3-2-1 - a 5-step checklist, each step tappable to complete,
+                with a progress line at the top.
+
+3. A completion state: a sage circle with a check, "You showed up for 5
+   minutes", and two buttons - "Back to activities" secondary and "Log how you
+   feel" primary that deep-links to the dashboard check-in.
+
+
+================================================================================
+ROUTE 6 of 9 - /app/crisis        Accent: plum.  NO GRADIENT ANYWHERE.
+================================================================================
+The most important screen. Deliberately calmer and simpler than the rest of the
+app. No gradient, no illustrations, generous spacing.
+
+1. A plum card at the top, rounded-2xl: "You're not in this alone." plus one
+   line, and a primary "Call KIRAN - 14416" that is a real tel: link, 56px tall,
+   full width on mobile.
+
+2. "Talk to someone now" - 4 helpline cards. The name, the number in Fraunces
+   24px, the hours, a "Call" primary and a "WhatsApp" secondary where
+   applicable. Real numbers:
+     KIRAN 14416 (24x7, MoHFW)
+     Vandrevala Foundation 1860-2662-345 (24x7)
+     iCall 9152987821 (Mon-Sat 8am-10pm)
+     Tele-MANAS 14416 (24x7)
+   These cards are cream-dark insets, not floating cards. Stack them, do not
+   grid them 4-across.
+
+3. "Or try this right now, in private" - 2 inline grounding exercises that run
+   on the page with no navigation: a 60-second breathing circle, and a 5-4-3-2-1
+   grounding checklist. Both must work in the offline state.
+
+4. "Message someone you trust" - a 3-step instruction list.
+
+5. A cream-dark card: "MindCircle cannot contact emergency services or notify
+   anyone on your behalf."
+
+6. Footer links to the FAQ and Support pages.
+
+Auto-focus an "I need to talk to someone" action at the top on mobile.
+
+No danger red anywhere on this page. The urgency comes from layout and plain
+language, not from alarm colours.
+
+
+================================================================================
+ROUTE 7 of 9 - /app/assessment    Accent: plum.  No gradient.
+================================================================================
+A 2-minute check-in. 5 questions, one per screen, with a top progress hairline
+(plum fill on warm-gray-lighter) and "Question 2 of 5".
+
+Question types:
+  - Single choice: 2 to 5 options as full-width selectable rows with a plum
+    border when active.
+  - A 0 to 10 scale as a labelled slider with the two end labels beneath.
+  - One optional free-text.
+
+Navigation: "Back" ghost on the left, "Continue" primary on the right, disabled
+until the question is answered.
+
+Final screen: a plum card with a plain summary (3 bullet observations plus the
+highest-scoring area). NEVER a diagnosis. NEVER a score out of 10 presented as
+a result. Plus "Save to my insights" primary and "Not now" ghost.
+
+
+================================================================================
+ROUTE 8 of 9 - /app/counsellors    Accent: terracotta.  No gradient.
+================================================================================
+PageHeader "Counsellors" plus one line of plain copy.
+
+A hairline row of 3 trust items (verified, flexible slots, private) as text with
+sage and terracotta icons - NOT three cards.
+
+Then a filter chip row (Specialty, Language, Mode, Fee) and a 2-column card list
+(3 columns at 1280 and above). Each card:
+  - a 64px initials avatar on plum, terracotta or sage
+  - the name
+  - the specialty in terracotta-dark
+  - experience
+  - languages
+  - a verified badge
+  - the next slot as "Next: Tue, 4:30 PM"
+  - the fee
+  - a full-width secondary "View profile"
+
+Empty state per filter: "No counsellors match that filter" plus a "Clear
+filters" ghost.
+
+
+================================================================================
+ROUTE 9 of 9 - /app/counsellor/:id Accent: sage.  No gradient.
+================================================================================
+Left column:
+  - an 88px avatar
+  - the name and credentials
+  - a verified badge
+  - specialty chips
+  - "About" as 2 short first-person paragraphs
+  - languages
+  - session modes
+  - a fee line
+
+Right rail (1024 and above): a sticky booking card.
+  - The next 5 slots as a 2-column grid of selectable rounded-lg time chips.
+  - A date chip row for the next 5 days.
+  - A "Confirm a free 15-min intro call" primary.
+  - A text-xs note: "You can cancel or reschedule any time. Your reason is
+    never shared."
+
+Below: a "What to expect" 3-step list, and a cream-dark card reading
+"Counsellors on MindCircle are verified, but this is not an emergency service."
+
+A "Message instead" secondary action.
+
+This booking card is the only elevated surface on the page.
+
+
+================================================================================
+DELIVER THESE 9 ROUTES
+================================================================================
+
+For each route report: the route, the components you created, the data you
+created, and confirmation that all four states (loading, empty, error, success)
+are implemented.
+
+After routes 1 through 5, STOP and report before continuing to routes 6
+through 9.
+
+Leave no TODOs. Do not create new base components beyond what these routes
+need. If you believe a new shared component is required, say so in your report
+and explain why before using it in more than one place.
+
+================================================================================
+END OF PART 2
+================================================================================

@@ -4,7 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const pageTransition = {
   initial: { opacity: 0, y: 12 },
@@ -52,10 +53,34 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    router.push('/app')
+    setError('')
+    setLoading(true)
+
+    const supabase = createClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    setLoading(false)
+
+    if (authError) {
+      // Account exists but email isn't confirmed yet → send them to verify.
+      if (authError.code === 'email_not_confirmed') {
+        router.push(`/verify-otp?email=${encodeURIComponent(email)}&mode=signup`)
+        return
+      }
+      setError(authError.message)
+      return
+    }
+
+    router.push('/app/activities')
+    router.refresh()
   }
 
   return (
@@ -178,12 +203,29 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-terracotta/10 text-terracotta text-sm font-medium">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
-              className="btn-gradient w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+              disabled={loading}
+              className="btn-gradient w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Log In <ArrowRight className="w-4 h-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Logging in...
+                </>
+              ) : (
+                <>
+                  Log In <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 

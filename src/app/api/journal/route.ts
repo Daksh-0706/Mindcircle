@@ -1,20 +1,22 @@
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('user_id')
+export async function GET() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  let query = supabase
-    .from('journal_entries')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (userId) {
-    query = query.eq('user_id', userId)
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data, error } = await query.limit(20)
+  const { data, error } = await supabase
+    .from('journal_entries')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(20)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -24,17 +26,26 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const body = await request.json()
-  
+
   const { data, error } = await supabase
     .from('journal_entries')
     .insert([{
-      user_id: body.user_id,
+      user_id: user.id,
       content: body.content,
       media_urls: body.media_urls || [],
       mood_tag: body.mood_tag,
       is_anonymous: body.is_anonymous ?? true,
-      is_private: body.is_private ?? true
+      is_private: body.is_private ?? true,
     }])
     .select()
 
@@ -46,13 +57,27 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
+
+  if (!id) {
+    return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  }
 
   const { error } = await supabase
     .from('journal_entries')
     .delete()
     .eq('id', id)
+    .eq('user_id', user.id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

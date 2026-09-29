@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MindCircle — Architecture Diagrams</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --cream: #FDF8F0;
+    --charcoal: #2D2A26;
+    --plum: #4A2C5E;
+    --sage: #7B9E6B;
+    --terracotta: #C45D3E;
+    --warm-gray: #8A8A8A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--charcoal);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    padding: 2rem 1.5rem 1rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  header h1 {
+    font-size: 1.8rem;
+    margin: 0 0 .25rem;
+  }
+  header h1 span {
+    background: linear-gradient(90deg, var(--plum), var(--terracotta));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header p { color: var(--warm-gray); margin: 0; }
+  nav {
+    max-width: 1100px;
+    margin: .5rem auto 0;
+    padding: 0 1.5rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  nav a {
+    font-size: .8rem;
+    text-decoration: none;
+    color: var(--plum);
+    background: #fff;
+    border: 1px solid #eadfce;
+    border-radius: 999px;
+    padding: .35rem .75rem;
+  }
+  nav a:hover { background: var(--plum); color: #fff; }
+  main { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+  section {
+    background: #fff;
+    border: 1px solid #eadfce;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    scroll-margin-top: 1rem;
+  }
+  h2 {
+    font-size: 1.15rem;
+    margin: 0 0 1rem;
+    color: var(--plum);
+  }
+  h2 small { color: var(--warm-gray); font-weight: 400; font-size: .8rem; margin-left: .5rem; }
+  .mermaid { display: flex; justify-content: center; overflow-x: auto; }
+  .mermaid svg { max-width: 100%; height: auto; }
+  #status {
+    text-align: center;
+    color: var(--warm-gray);
+    padding: 2rem 0;
+    font-size: .9rem;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><span>MindCircle</span> — Solution Architecture &amp; Workflow Diagrams</h1>
+  <p>Next.js 16 · React 19 · Supabase (Postgres + Auth + Realtime) · Tailwind v4 · generated from the actual codebase</p>
+</header>
+
+<nav>
+  <a href="#s1">System</a>
+  <a href="#s2">Auth guard</a>
+  <a href="#s3">Signup flow</a>
+  <a href="#s4">Data access</a>
+  <a href="#s5">Realtime chat</a>
+  <a href="#s6">Data model</a>
+  <a href="#s7">Routes</a>
+  <a href="#s8">Deployment</a>
+</nav>
+
+<main id="diagrams">
+  <p id="status">Rendering diagrams…</p>
+
+  <section id="s1">
+    <h2>1 · High-Level System Architecture <small>flowchart</small></h2>
+    <pre class="mermaid">
+flowchart TB
+    subgraph CLIENT["🖥️ Client — Browser"]
+      UI["Next.js App Router UI<br/>React 19 · TypeScript · Tailwind v4 · shadcn · framer-motion"]
+    end
+    subgraph NEXT["⚙️ Next.js 16 Server"]
+      PROXY["src/proxy.ts — Session Guard<br/>updateSession on every request"]
+      SC["Server Components<br/>SSR pages via cookies"]
+      API["Route Handlers /api/*<br/>me · mood · journal · matches<br/>stories · chat · messages · dm"]
+    end
+    subgraph SUPA["🗄️ Supabase"]
+      AUTH["Auth<br/>email + OTP"]
+      PG[("PostgreSQL<br/>+ Row Level Security")]
+      RT["Realtime<br/>postgres_changes"]
+    end
+    UI -->|HTTP| PROXY
+    PROXY -->|guarded| SC
+    PROXY -->|guarded| API
+    SC -->|SSR fetch| PG
+    API -->|PostgREST + user JWT| PG
+    AUTH -.->|sb-* session cookies| PROXY
+    RT -.->|INSERT events| UI
+    </pre>
+  </section>
+
+  <section id="s2">
+    <h2>2 · Request Lifecycle — Auth Guard <small>flowchart</small></h2>
+    <pre class="mermaid">
+flowchart TD
+    A["Request → /app/* or auth pages"] --> P["proxy.ts · updateSession()"]
+    P --> G["createServerClient + auth.getUser()"]
+    G -->|valid session| D{Signed in?}
+    G -->|no session| N{Signed in?}
+    D -->|yes · visiting /app/*| OK["✅ Continue"]
+    D -->|yes · visiting / /login /signup /landing| R2["🔀 Redirect → /app"]
+    D -->|yes · other| OK3["✅ Continue"]
+    N -->|no · visiting /app/*| R1["🔀 Redirect → /login"]
+    N -->|no · auth pages| OK2["✅ Continue"]
+    N -->|no · other| OK3
+    </pre>
+  </section>
+
+  <section id="s3">
+    <h2>3 · Signup &amp; Profile Creation Workflow <small>sequence</small></h2>
+    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant FE as Client (React)
+    participant SB as Supabase Auth
+    participant PG as Postgres (trigger)
+    participant PX as proxy.ts
+    U->>FE: Signup (email + password)
+    FE->>SB: signUp()
+    SB-->>FE: user + session
+    SB->>PG: INSERT auth.users
+    PG->>PG: handle_new_user() — SECURITY DEFINER
+    PG->>PG: INSERT public.users (id, email, anonymous_id, avatar)
+    FE->>SB: verify-otp (if confirmation enabled)
+    FE->>FE: onboarding
+    U->>PX: GET /app
+    PX->>SB: getUser() → valid → allow
+    PX-->>U: Dashboard
+    </pre>
+  </section>
+
+  <section id="s4">
+    <h2>4 · Data-Access Workflow <small>sequence</small></h2>
+    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant UI as Client Page
+    participant API as Route Handler /api/*
+    participant DB as Supabase PostgREST + RLS
+    U->>UI: action (mood / journal / story…)
+    UI->>API: fetch JSON
+    API->>DB: auth.getUser()
+    DB-->>API: user (or 401 stop)
+    API->>DB: .from(table).select/insert/delete
+    DB->>DB: RLS: auth.uid() = user_id
+    DB-->>API: rows / error
+    API-->>UI: {data} | {error, status}
+    UI-->>U: re-render
+    </pre>
+  </section>
+
+  <section id="s5">
+    <h2>5 · Realtime Chat Workflow <small>sequence</small></h2>
+    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor A as User A
+    participant FE as Chat Page
+    participant API as /api/chat/dm · /messages
+    participant DB as Supabase Postgres
+    participant RT as Supabase Realtime
+    actor B as User B
+    A->>FE: open /app/chat/[id]
+    FE->>API: GET history (+ auto-join room)
+    API->>DB: select messages / direct_messages
+    DB-->>FE: history
+    FE->>RT: subscribe chat-{peerId} · INSERT events
+    A->>API: POST send (optimistic bubble)
+    API->>DB: INSERT sender = auth.uid()
+    DB-->>RT: broadcast INSERT
+    RT-->>A: replace temp bubble
+    RT-->>B: append instantly
+    </pre>
+  </section>
+
+  <section id="s6">
+    <h2>6 · Data Model <small>ER diagram</small></h2>
+    <pre class="mermaid">
+erDiagram
+    auth_users ||--o| users : "signup trigger"
+    users ||--o{ mood_logs : user_id
+    users ||--o{ journal_entries : user_id
+    users ||--o{ stories : user_id
+    users ||--o{ story_likes : user_id
+    stories ||--o{ story_likes : story_id
+    users ||--o{ room_members : user_id
+    chat_rooms ||--o{ room_members : room_id
+    chat_rooms ||--o{ messages : room_id
+    users ||--o{ messages : sender_id
+    users ||--o{ direct_messages : sender_receiver
+    users }o--o{ matches : user1_user2
+    users {
+      uuid id PK
+      text email
+      text anonymous_id
+      text avatar_emoji
+      jsonb settings
+    }
+    mood_logs {
+      uuid id PK
+      uuid user_id FK
+      int mood_score
+      text mood_emoji
+    }
+    journal_entries {
+      uuid id PK
+      uuid user_id FK
+      text content
+      bool is_private
+    }
+    stories {
+      uuid id PK
+      uuid user_id FK
+      text content
+      timestamptz expires_at
+    }
+    story_likes {
+      uuid story_id FK
+      uuid user_id FK
+    }
+    chat_rooms {
+      uuid id PK
+      text name
+      bool is_active
+    }
+    room_members {
+      uuid room_id FK
+      uuid user_id FK
+    }
+    messages {
+      uuid id PK
+      uuid room_id FK
+      uuid sender_id FK
+      bool is_deleted
+    }
+    direct_messages {
+      uuid id PK
+      uuid sender_id FK
+      uuid receiver_id FK
+      bool is_read
+    }
+    matches {
+      uuid id PK
+      uuid user1_id FK
+      uuid user2_id FK
+      float similarity_score
+    }
+    </pre>
+  </section>
+
+  <section id="s7">
+    <h2>7 · Route Structure <small>flowchart</small></h2>
+    <pre class="mermaid">
+flowchart LR
+    ROOT["/"] -->|redirect| LANDING
+    subgraph AUTH["(auth) — guests"]
+      LANDING["/landing"] --> SIGNUP["/signup"]
+      SIGNUP --> OTP["/verify-otp"]
+      OTP --> ONB["/onboarding"]
+      LANDING --> LOGIN["/login"]
+    end
+    AUTH -->|signed in| DASH
+    subgraph APP["/app — auth required"]
+      DASH["Dashboard<br/>mood check-in"]
+      JOURNAL["/journal"]
+      CONNECT["/connect"]
+      CHATS["/chats → /chat/[id]"]
+      INSIGHTS["/insights"]
+      ACT["/activities"]
+      COUNS["/counsellors"]
+      CRISIS["/crisis"]
+      PROFILE["/profile · /settings"]
+    end
+    APP --> API["/api/* handlers"]
+    </pre>
+  </section>
+
+  <section id="s8">
+    <h2>8 · Deployment Topology <small>flowchart</small></h2>
+    <pre class="mermaid">
+flowchart LR
+    U["👤 Browser"] -->|HTTPS| HOST["Next.js host<br/>Vercel / Node"]
+    HOST -->|SSR| U
+    HOST -->|Route Handlers| S["Supabase<br/>Postgres + Auth + Realtime"]
+    U -->|anon key + cookie session| S
+    U -->|wss realtime| S
+    ENV[".env.local<br/>SUPABASE_URL · ANON_KEY"] --> HOST
+    </pre>
+  </section>
+</main>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#F3EBDD',
+      primaryTextColor: '#2D2A26',
+      primaryBorderColor: '#4A2C5E',
+      lineColor: '#8A8A8A',
+      secondaryColor: '#EFE7F5',
+      tertiaryColor: '#EAF2E5',
+      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+      fontSize: '14px',
+    },
+    flowchart: { curve: 'basis', padding: 12 },
+    sequence: { actorMargin: 40, noteMargin: 10, mirrorActors: false },
+  }).then(() => {
+    const el = document.getElementById('status');
+    if (el) el.remove();
+  }).catch((err) => {
+    const el = document.getElementById('status');
+    if (el) el.textContent = 'Diagram rendering failed: ' + (err && err.message ? err.message : err);
+  });
+</script>
+</body>
+</html>
