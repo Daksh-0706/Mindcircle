@@ -331,7 +331,7 @@ flowchart LR
 
 <script>
   mermaid.initialize({
-    startOnLoad: true,
+    startOnLoad: false,
     theme: 'base',
     themeVariables: {
       primaryColor: '#F3EBDD',
@@ -345,7 +345,8 @@ flowchart LR
     },
     flowchart: { curve: 'basis', padding: 12 },
     sequence: { actorMargin: 40, noteMargin: 10, mirrorActors: false },
-  }).then(() => {
+  });
+  mermaid.run({ querySelector: '.mermaid' }).then(() => {
     const el = document.getElementById('status');
     if (el) el.remove();
   }).catch((err) => {
