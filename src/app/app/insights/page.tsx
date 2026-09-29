@@ -4,6 +4,7 @@ import { AppNav } from '../../../components/layout/AppNavContext'
 import Skeleton from '../../../components/ui/Skeleton'
 import { TrendingUp } from 'lucide-react'
 import { MOOD_EMOJIS } from '../../../lib/constants'
+import { formatDefaultDate, formatShortDate, formatWeekday } from '../../../lib/dates'
 
 type MoodLog = {
   id: string
@@ -173,10 +174,10 @@ export default function InsightsPage() {
                         <div
                           className={`w-full max-w-[40px] rounded-t-lg ${BAR_COLORS['😌']}`}
                           style={{ height: `${Math.max(8, (t.avg / 5) * 100)}%`, backgroundColor: t.avg >= 4 ? '#7B9E6B' : t.avg >= 3 ? '#6B4A80' : '#C45D3E' }}
-                          title={t.day.toLocaleDateString()}
+                          title={formatDefaultDate(t.day)}
                         />
                         <span className="w-full truncate text-center text-[10px] text-[#80698A]">
-                          {t.day.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          {formatShortDate(t.day)}
                         </span>
                       </div>
                     ))}
@@ -225,7 +226,7 @@ export default function InsightsPage() {
                   <div className="flex items-center justify-between py-3">
                     <span className="text-sm text-charcoal">Best Day</span>
                     <span className="text-sm font-bold text-plum">
-                      {bestDay ? bestDay.day.toLocaleDateString(undefined, { weekday: 'long' }) : '—'}
+                      {bestDay ? formatWeekday(bestDay.day) : '—'}
                     </span>
                   </div>
                   <div className="h-px bg-warm-gray-lighter" />

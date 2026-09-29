@@ -6,6 +6,7 @@ import Skeleton from '../../../components/ui/Skeleton'
 import EmptyState from '../../../components/ui/EmptyState'
 import { LockKeyhole, Plus, Search } from 'lucide-react'
 import { MOOD_EMOJIS } from '../../../lib/constants'
+import { formatShortDate, formatTime } from '../../../lib/dates'
 
 type JournalEntry = {
   id: string
@@ -33,7 +34,7 @@ function dayLabel(iso: string) {
   if (d.toDateString() === today.toDateString()) return 'Today'
   const yesterday = new Date(today.getTime() - 86400000)
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  return formatShortDate(d)
 }
 
 function excerpt(content: string, max = 130) {
@@ -92,7 +93,7 @@ export default function JournalPage() {
       setTitle('')
       setContent('')
       setMood(null)
-      setSavedAt(new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))
+      setSavedAt(formatTime(new Date()))
       loadEntries()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')

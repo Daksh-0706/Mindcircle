@@ -5,6 +5,7 @@ import { AppNav } from '../../../../components/layout/AppNavContext'
 import Skeleton from '../../../../components/ui/Skeleton'
 import { LockKeyhole, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { formatTime } from '../../../../lib/dates'
 import { aliasFor, roomDescription, roomEmoji } from '../../../../lib/alias'
 
 type ChatMessage = {
@@ -19,7 +20,7 @@ type ChatMessage = {
 const MAX_CHARS = 500
 
 function timeLabel(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return formatTime(new Date(iso))
 }
 
 export default function ChatDetailPage() {

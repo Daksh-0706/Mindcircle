@@ -14,6 +14,7 @@ import {
 import { AppNav } from '../../components/layout/AppNavContext'
 import MoodCheckin from '../../components/ui/MoodCheckin'
 import Skeleton from '../../components/ui/Skeleton'
+import { formatLongDate } from '../../lib/dates'
 
 type MoodLog = { id: string; mood_score: number; created_at: string }
 type JournalEntry = { id: string; content: string; created_at: string }
@@ -108,7 +109,7 @@ export default function DashboardPage() {
           <div className="relative flex flex-col gap-4">
             <div>
               <p className="text-[13px] font-bold text-cream/80">
-                {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+                {formatLongDate(now)}
               </p>
               <h1 className="mt-1 font-heading text-[28px] font-bold">
                 {greetingFor(now.getHours())}, {displayName}.

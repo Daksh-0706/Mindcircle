@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useIsMobile, useIsDesktop } from '../../../hooks/useMediaQuery'
 import { cn } from '../../../lib/utils'
 import { aliasFor } from '../../../lib/alias'
+import { formatMonthYear, formatShortDate } from '../../../lib/dates'
 import Skeleton from '../../../components/ui/Skeleton'
 import EmptyState from '../../../components/ui/EmptyState'
 
@@ -23,7 +24,7 @@ const tabs = [
 const INTEREST_TAGS = ['Journaling', 'Peer support', 'Mood tracking']
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  return formatShortDate(new Date(iso))
 }
 
 function titleOf(content: string, max = 48) {
@@ -304,7 +305,7 @@ export default function ProfilePage() {
 
         {isDesktop && me?.createdAt && (
           <p className="text-center text-xs text-warm-gray">
-            Member since {new Date(me.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })} · Your identity is never shared
+            Member since {formatMonthYear(new Date(me.createdAt))} · Your identity is never shared
           </p>
         )}
       </motion.div>

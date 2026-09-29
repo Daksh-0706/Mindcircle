@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Heart, Phone, Shield, BookOpen, Leaf, Play, Pause,
@@ -60,53 +60,41 @@ const resources = [
   },
 ]
 
+/**
+ * Each phase carries its own scale target AND its own scale animation duration:
+ * - 'Breathe in'  : grows to `scale` over `duration`
+ * - 'Hold'        : scaleDuration 0 → circle stays frozen at the inhale size
+ * - 'Breathe out' : shrinks back to 1 immediately as the phase begins
+ */
 const BREATHING_PHASES = [
-  { label: 'Breathe in...', duration: 4000, scale: 1.4 },
-  { label: 'Hold...', duration: 2000, scale: 1.4 },
-  { label: 'Breathe out...', duration: 6000, scale: 1.0 },
+  { label: 'Breathe in...', duration: 3000, scale: 1.2, scaleDuration: 3 },
+  { label: 'Hold...', duration: 2000, scale: 1.2, scaleDuration: 0 },
+  { label: 'Breathe out...', duration: 5000, scale: 1, scaleDuration: 5 },
 ] as const
 
 export default function CrisisPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentPhase, setCurrentPhase] = useState(0)
-  const [breathingScale, setBreathingScale] = useState(1)
-  const phaseRef = useRef(currentPhase)
-  const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMobile = useIsMobile()
   const isDesktop = useIsDesktop()
 
-  useEffect(() => {
-    phaseRef.current = currentPhase
-  }, [currentPhase])
-
+  // Advance to the next phase when the current one ends.
   useEffect(() => {
     if (!isPlaying) return
 
-    const runCycle = () => {
-      const phase = BREATHING_PHASES[phaseRef.current]
-      setBreathingScale(phase.scale)
+    const t = setTimeout(() => {
+      setCurrentPhase((prev) => (prev + 1) % BREATHING_PHASES.length)
+    }, BREATHING_PHASES[currentPhase].duration)
 
-      const phaseTimeout = setTimeout(() => {
-        setCurrentPhase(prev => (prev + 1) % BREATHING_PHASES.length)
-      }, phase.duration)
+    return () => clearTimeout(t)
+  }, [isPlaying, currentPhase])
 
-      const cycleTimeout = setTimeout(() => {
-        if (isPlaying) runCycle()
-      }, BREATHING_PHASES.reduce((sum, p) => sum + p.duration, 0))
-
-      animationRef.current = cycleTimeout
-      return () => {
-        clearTimeout(phaseTimeout)
-        clearTimeout(cycleTimeout)
-      }
-    }
-
-    runCycle()
-
-    return () => {
-      if (animationRef.current) clearTimeout(animationRef.current)
-    }
-  }, [isPlaying])
+  const phase = BREATHING_PHASES[currentPhase]
+  // Per-phase easing: the circle grows during inhale, is frozen during hold
+  // (duration 0) and shrinks for the full exhale duration.
+  const circleTransition = isPlaying
+    ? { duration: phase.scaleDuration, ease: 'easeInOut' as const }
+    : { duration: 0.3, ease: 'easeInOut' as const }
 
   return (
     <div className="min-h-screen bg-cream pb-safe">
@@ -237,37 +225,26 @@ export default function CrisisPage() {
             <h2 className="font-heading text-xl font-bold text-charcoal mb-4 text-center">Breathing Exercise</h2>
             <div className="flex flex-col items-center gap-6">
               <div className="relative w-[280px] h-[280px]">
-                {/* Outer rings */}
+                {/* Outer rings — follow the same per-phase scale as the main circle */}
                 {[3, 2, 1].map((ring) => (
                   <motion.div
                     key={ring}
-                    animate={{
-                      scale: isPlaying ? breathingScale : 1,
-                      opacity: [0.15, 0.1, 0.05][ring - 1],
-                    }}
-                    transition={{
-                      duration: isPlaying ? BREATHING_PHASES.reduce((sum, p) => sum + p.duration, 0) / 1000 : 0,
-                      ease: 'easeInOut',
-                      repeat: isPlaying ? Infinity : 0,
-                    }}
+                    animate={{ scale: isPlaying ? phase.scale : 1 }}
+                    transition={circleTransition}
                     className="absolute inset-0 rounded-full border-2"
-                    style={{ borderColor: '#4A2C5E' }}
+                    style={{ borderColor: '#4A2C5E', opacity: [0.15, 0.1, 0.05][ring - 1] }}
                   />
                 ))}
 
                 {/* Main circle */}
                 <motion.div
                   animate={{
-                    scale: isPlaying ? breathingScale : 1,
+                    scale: isPlaying ? phase.scale : 1,
                     boxShadow: isPlaying
                       ? '0 0 60px rgba(74, 44, 94, 0.3)'
                       : '0 0 30px rgba(74, 44, 94, 0.15)',
                   }}
-                  transition={{
-                    duration: isPlaying ? BREATHING_PHASES.reduce((sum, p) => sum + p.duration, 0) / 1000 : 0.3,
-                    ease: 'easeInOut',
-                    repeat: isPlaying ? Infinity : 0,
-                  }}
+                  transition={circleTransition}
                   className="absolute inset-0 rounded-full bg-gradient-to-br from-plum/20 to-terracotta/20 flex items-center justify-center"
                 >
                   <div className="text-center">
