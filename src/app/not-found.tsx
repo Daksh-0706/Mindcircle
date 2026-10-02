@@ -1,5 +1,12 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Compass, Heart, Home } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Page not found',
+  description: 'That page does not exist. Head back to your safe space.',
+  robots: { index: false, follow: true },
+}
 
 /** Small hand-drawn accent strokes used beside the logo in the mockup. */
 function Dashes({ className = '' }: { className?: string }) {

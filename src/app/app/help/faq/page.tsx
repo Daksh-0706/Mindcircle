@@ -1,65 +1,22 @@
-'use client'
-import { AppNav } from '../../../../components/layout/AppNavContext'
-import Card from '../../../../components/ui/Card'
+import type { Metadata } from 'next'
+import FaqClient from './FaqClient'
 
-const faqs = [
-  {
-    q: 'How private is my journal?',
-    a: 'Completely. Your journal entries and mood check-ins are stored securely and are visible only to you — never to other members, counsellors, or even moderators. The "Private Journal" page is locked by default, and nothing you write there is ever shared, matched, or used in community spaces. You can confirm this anytime from Settings → Privacy.',
-  },
-  {
-    q: 'How does anonymous sharing work?',
-    a: 'When you post a story or join a discussion room, MindCircle shows an auto-generated alias instead of your name — no one, including us, links your posts back to you in the community. Your journal, mood history, and identity are never attached to anything you share publicly. You can see your alias on your profile page.',
-  },
-  {
-    q: 'Can I delete my account?',
-    a: 'Yes. You stay in control of your data at all times. Deleting your account permanently removes your profile, journal entries, mood logs, stories, and connections — with no recovery period. If you would like to delete your account, contact us through the Contact Support page and we will process it for you.',
-  },
-  {
-    q: 'How do I contact a counsellor?',
-    a: 'Visit the Counsellors page to browse profiles of licensed professionals. Each counsellor lets you book a session or send a question directly from their profile. Counsellor booking opens once verification is complete — until then, profiles are shown in preview mode. In the meantime, peer rooms and Crisis Support are available 24/7.',
-  },
-  {
-    q: 'What happens in a crisis or emergency?',
-    a: 'Open the Crisis Support page from the sidebar. It gives you one-tap access to 24/7 helplines (iCall, Vandrevala Foundation, AASRA), a guided breathing exercise to calm your body, and a gentle fact sheet on understanding anxiety. If you or someone else is in immediate danger, always call emergency services (112) or go to the nearest emergency room first.',
-  },
-  {
-    q: 'How do mood check-ins and insights work?',
-    a: 'Whenever you log a mood — from your dashboard or the journal — MindCircle records it with a timestamp. Over time, the Insights page turns these into patterns: how your mood trends across days, what you were journaling about, and how active you have been. It is a gentle mirror, not a diagnosis.',
-  },
-  {
-    q: 'Are my stories really deleted after 24 hours?',
-    a: 'Yes. Stories are designed to be ephemeral — like a moment, not a permanent post. Every story automatically disappears 24 hours after you share it, and you can also delete your own story at any time using the Delete button on it. Likes on a story disappear along with it.',
-  },
-  {
-    q: 'Is MindCircle a replacement for therapy?',
-    a: 'No. MindCircle is a support tool — journaling, mood tracking, peer circles, and wellbeing activities are there to help you reflect and feel less alone. It is not medical care and does not replace a licensed professional. If you are struggling beyond what peer support covers, the Counsellors page and Crisis Support page are the right next steps.',
-  },
-]
+export const metadata: Metadata = {
+  title: 'Frequently Asked Questions',
+  description:
+    'Answers about privacy, journal security, counsellor verification, data handling and how peer support works on MindCircle.',
 
-export default function FaqPage() {
-  return (
-    <>
-      <AppNav title="Help & FAQ" showBack />
-      <div className="page-enter mx-auto max-w-3xl space-y-6 pb-8">
-        <div>
-          <p className="text-sm text-warm-gray">Answers for common questions</p>
-          <h1 className="mt-1 font-heading text-3xl font-semibold">How can we help?</h1>
-        </div>
-        <div className="space-y-3">
-          {faqs.map(({ q, a }) => (
-            <details key={q} className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between rounded-2xl border border-warm-gray-lighter bg-white/75 px-5 py-4 font-medium">
-                {q}
-                <span className="text-xl text-plum transition-transform group-open:rotate-45">+</span>
-              </summary>
-              <Card padding="md" className="mt-1 rounded-t-none bg-cream-dark text-sm leading-6 text-charcoal/90">
-                {a}
-              </Card>
-            </details>
-          ))}
-        </div>
-      </div>
-    </>
-  )
+  alternates: { canonical: '/app/help/faq' },
+  robots: { index: true, follow: true },
+}
+
+/**
+ * Server shell for the FaqClient.
+ *
+ * All of the UI lives in the colocated client component; this file exists so
+ * the route can export real `metadata`, which is rendered into the HTML for
+ * crawlers that never execute JavaScript.
+ */
+export default function Page() {
+  return <FaqClient />
 }

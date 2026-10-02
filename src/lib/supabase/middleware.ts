@@ -33,7 +33,26 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isAppRoute = pathname.startsWith('/app')
+
+  /**
+   * Public pages that happen to live under /app.
+   *
+   * These are informational and carry no user data, but they must not sit
+   * behind a login: someone in distress opening the crisis page cannot be
+   * asked to authenticate first, and a FAQ or contact page that only exists
+   * for signed-in users is invisible to search engines and to anyone trying to
+   * reach support. They are also the pages listed in sitemap.xml, so they have
+   * to be genuinely public.
+   */
+  const PUBLIC_APP_PATHS = new Set([
+    '/app/crisis',
+    '/app/help/about',
+    '/app/help/faq',
+    '/app/help/support',
+  ])
+  const isPublicAppPage = PUBLIC_APP_PATHS.has(pathname)
+
+  const isAppRoute = pathname.startsWith('/app') && !isPublicAppPage
   // Onboarding is part of the signed-in journey, not the public one: it reads
   // the session to prefill the name and provision the profile row.
   const isOnboarding = pathname.startsWith('/onboarding')

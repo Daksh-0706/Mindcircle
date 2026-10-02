@@ -1,13 +1,85 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import {
+  SITE_URL,
+  SITE_NAME,
+  DEFAULT_TITLE,
+  DEFAULT_DESCRIPTION,
+  OG_IMAGE_PATH,
+} from '@/lib/seo'
+import { CookieNotice } from '@/components/common/CookieNotice'
 
 export const metadata: Metadata = {
-  title: 'MindCircle — Your Safe Space',
-  description: 'A privacy-first mental health platform for students and young professionals. Journal, connect, and heal in a safe space.',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: DEFAULT_TITLE,
+    template: '%s | MindCircle',
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    'mental health',
+    'student mental health',
+    'anonymous journal',
+    'mood tracking',
+    'peer support',
+    'online counselling',
+    'anxiety relief',
+    'mindfulness exercises',
+  ],
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    url: SITE_URL,
+    locale: 'en_IN',
+    images: [
+      { url: OG_IMAGE_PATH, width: 1200, height: 630, alt: 'MindCircle — Your Safe Space' },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [OG_IMAGE_PATH],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  category: 'health',
+  formatDetection: { telephone: false, address: false, email: false },
+  icons: {
+    icon: [
+      // src/app/favicon.ico and src/app/apple-icon.png are picked up
+      // automatically by the App Router; these fill in the SVG and PWA sizes.
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '256x256' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: '/apple-icon.png',
+  },
 }
 
 export const viewport: Viewport = {
-  themeColor: '#4A2C5E',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FFF8F0' },
+    { media: '(prefers-color-scheme: dark)', color: '#3A1F4A' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -27,7 +99,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen bg-cream text-charcoal font-body antialiased">
-        <div className="grain-overlay min-h-screen">{children}</div>
+        <div className="grain-overlay min-h-screen">
+          {children}
+          <CookieNotice />
+        </div>
       </body>
     </html>
   )

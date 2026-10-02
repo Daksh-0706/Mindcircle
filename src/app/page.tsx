@@ -1,21 +1,16 @@
-'use client'
+import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+/**
+ * `/` is a thin redirect to `/landing`, which carries the real metadata and
+ * content. It is kept out of the index so the two URLs never compete, and so
+ * the canonical landing page stays the single result for the brand name.
+ */
+export const metadata: Metadata = {
+  title: 'MindCircle — Your Safe Space',
+  robots: { index: false, follow: true },
+}
 
 export default function Home() {
-  const router = useRouter()
-
-  useEffect(() => {
-    router.replace('/landing')
-  }, [router])
-
-  return (
-    <div className="min-h-screen bg-cream flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="font-heading text-3xl gradient-text font-bold">MindCircle</h1>
-        <p className="text-warm-gray mt-2">Loading your safe space...</p>
-      </div>
-    </div>
-  )
+  redirect('/landing')
 }

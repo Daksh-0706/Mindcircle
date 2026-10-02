@@ -1,0 +1,21 @@
+# Stray tooling that has nothing to do with the Next.js app.
+# front-end/project/ is an abandoned Vite app; excluding it keeps the
+# deployment upload lean and stops it confusing the build.
+front-end/
+
+# Agent/tooling config — not needed at runtime.
+.claude/
+.codex/
+.freebuff/
+
+# Docs that are working notes, not runtime files.
+AGENTS.md
+CLAUDE.md
+
+# Local environment files. Vercel gets these from Project Settings →
+# Environment Variables, never from the repo.
+.env*
+!.env.example
+
+# Mistake: an empty file named `git` got committed by accident.
+git
