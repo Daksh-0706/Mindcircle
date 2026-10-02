@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { clientKey, rateLimit, tooManyRequests } from '@/lib/security'
 
 /**
  * POST /api/auth/change-password
@@ -16,6 +17,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // This endpoint re-authenticates with the current password, so it is a
+  // password-guessing oracle unless it is throttled.
+  const limit = rateLimit(clientKey(request, user.id), { limit: 5, windowMs: 5 * 60_000 })
+  if (!limit.ok) return tooManyRequests(limit.retryAfter)
+
   const body = await request.json().catch(() => null)
   const currentPassword = typeof body?.current_password === 'string' ? body.current_password : ''
   const newPassword = typeof body?.new_password === 'string' ? body.new_password : ''
@@ -25,6 +31,21 @@ export async function POST(request: Request) {
   }
   if (newPassword.length < 8) {
     return NextResponse.json({ error: 'New password must be at least 8 characters.' }, { status: 400 })
+  }
+  if (newPassword === currentPassword) {
+    return NextResponse.json(
+      { error: 'Your new password must be different from the current one.' },
+      { status: 400 },
+    )
+  }
+  if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+    return NextResponse.json(
+      { error: 'Password must contain at least one letter and one number.' },
+      { status: 400 },
+    )
+  }
+  if (newPassword.length > 200) {
+    return NextResponse.json({ error: 'Password is too long.' }, { status: 400 })
   }
 
   // Verify the current password by signing in with it.

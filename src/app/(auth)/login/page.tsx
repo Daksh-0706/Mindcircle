@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { motion } from 'framer-motion'
 import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { authErrorMessage } from '@/lib/auth-errors'
 
 const supabase = createClient()
 
@@ -43,7 +45,23 @@ function GoogleIcon() {
 /* ── Page ─────────────────────────────────────────────────── */
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Where the middleware wanted to send us before bouncing to login. Only a
+  // same-origin relative path is honoured, so this can't become an open
+  // redirect (the middleware applies the same rule on its side).
+  const nextPath =
+    searchParams.get('next')?.startsWith('/') && !searchParams.get('next')?.startsWith('//')
+      ? searchParams.get('next')!
+      : '/app'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -70,12 +88,17 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
     if (signInError) {
-      setError(signInError.message)
+      setLoading(false)
+      // Deliberately vague: don't reveal whether the account exists.
+      setError(authErrorMessage(signInError))
       return
     }
-    router.push('/app')
+    // Make sure the profile row exists before we route anywhere that reads it.
+    await fetch('/api/profile/ensure', { method: 'POST' }).catch(() => undefined)
+    setLoading(false)
+    router.replace(nextPath)
+    router.refresh()
   }
 
   return (

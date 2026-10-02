@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { asInt, asText, badRequest, readJson } from '@/lib/security'
 
 export async function GET() {
   const supabase = await createClient()
@@ -35,15 +36,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json()
+  const body = await readJson(request)
+  if (!body) return badRequest('Invalid request body.')
+
+  const moodScore = asInt(body.mood_score, { min: 1, max: 10 })
+  if (moodScore === null) {
+    return badRequest('Mood score must be a whole number between 1 and 10.')
+  }
+
+  const moodEmoji = asText(body.mood_emoji, { min: 1, max: 16 })
+  if (!moodEmoji) return badRequest('Please choose a mood.')
+
+  const note = asText(body.note, { min: 0, max: 1000 }) ?? null
 
   const { data, error } = await supabase
     .from('mood_logs')
     .insert([{
       user_id: user.id,
-      mood_score: body.mood_score,
-      mood_emoji: body.mood_emoji,
-      note: body.note,
+      mood_score: moodScore,
+      mood_emoji: moodEmoji,
+      note,
     }])
     .select()
 

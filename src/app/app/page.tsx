@@ -110,7 +110,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <AppNav title="Dashboard" />
+      <AppNav title="Home" />
       <div className="page-enter space-y-5 pb-8">
         {/* ── Sunset hero banner ───────────────────────────────── */}
         <section

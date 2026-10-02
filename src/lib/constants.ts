@@ -1,5 +1,5 @@
 export const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/app', icon: 'Home' },
+  { label: 'Home', href: '/app', icon: 'Home' },
   { label: 'Journal', href: '/app/journal', icon: 'BookOpen' },
   { label: 'Connect', href: '/app/connect', icon: 'Users' },
   { label: 'Insights', href: '/app/insights', icon: 'BarChart3' },
@@ -7,7 +7,7 @@ export const NAV_ITEMS = [
 ] as const
 
 export const SIDEBAR_ITEMS = [
-  { label: 'Dashboard', href: '/app', icon: 'Home' },
+  { label: 'Home', href: '/app', icon: 'Home' },
   { label: 'Journal', href: '/app/journal', icon: 'BookOpen' },
   { label: 'Connect', href: '/app/connect', icon: 'Users' },
   { label: 'Insights', href: '/app/insights', icon: 'BarChart3' },

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { asUuid, badRequest } from '@/lib/security'
 
 /**
  * GET /api/chat/dm
@@ -17,7 +18,13 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const receiverId = searchParams.get('receiver_id')
+  const rawReceiverId = searchParams.get('receiver_id')
+  const receiverId = asUuid(rawReceiverId)
+
+  // Present but malformed means a tampered id, not "list my threads".
+  if (rawReceiverId !== null && !receiverId) {
+    return badRequest('Invalid receiver_id.')
+  }
 
   if (!receiverId) {
     const { data: mine, error: mineError } = await supabase
@@ -92,14 +99,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json()
+  const body = (await request.json().catch(() => null)) as
+    | { receiver_id?: unknown; content?: unknown }
+    | null
+
+  const receiverId = asUuid(body?.receiver_id)
+  const content =
+    typeof body?.content === 'string' ? body.content.trim().slice(0, 4000) : ''
+
+  if (!receiverId || !content) {
+    return badRequest('A valid receiver_id and message content are required.')
+  }
 
   // Verify the receiver actually exists — otherwise the FK violation leaks
   // an ugly internal error when a stale/deleted user id is referenced.
   const { data: receiver, error: receiverError } = await supabase
     .from('users')
     .select('id')
-    .eq('id', body.receiver_id)
+    .eq('id', receiverId)
     .maybeSingle()
 
   if (receiverError) {
@@ -116,8 +133,8 @@ export async function POST(request: Request) {
     .from('direct_messages')
     .insert([{
       sender_id: user.id,
-      receiver_id: body.receiver_id,
-      content: body.content,
+      receiver_id: receiverId,
+      content,
     }])
     .select()
 

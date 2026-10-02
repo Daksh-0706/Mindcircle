@@ -34,6 +34,9 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isAppRoute = pathname.startsWith('/app')
+  // Onboarding is part of the signed-in journey, not the public one: it reads
+  // the session to prefill the name and provision the profile row.
+  const isOnboarding = pathname.startsWith('/onboarding')
   const isAuthLanding =
     pathname === '/' ||
     pathname.startsWith('/login') ||
@@ -41,16 +44,42 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/landing')
 
   // Protect the authenticated app — send guests to login.
-  if (!user && isAppRoute) {
+  // Remember where they were headed so login can return them there instead of
+  // dumping them on the dashboard.
+  if (!user && (isAppRoute || isOnboarding)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.search = ''
+    // Only same-origin relative paths — never an absolute URL, or this
+    // becomes an open redirect.
+    url.searchParams.set('next', `${pathname}${request.nextUrl.search}`)
     return NextResponse.redirect(url)
   }
 
-  // Already signed in? Skip the landing/login/signup screens.
+  // Already signed in? Skip the landing/login/signup screens and continue to
+  // wherever they were originally headed.
   if (user && isAuthLanding) {
+    const next = request.nextUrl.searchParams.get('next')
     const url = request.nextUrl.clone()
-    url.pathname = '/app'
+    // Only allow a same-origin relative path. Without this check an attacker
+    // could send someone to /login?next=https://evil.example and harvest the
+    // post-login redirect.
+    const safeNext =
+      typeof next === 'string' &&
+      next.startsWith('/') &&
+      !next.startsWith('//') &&
+      !next.startsWith('/\\')
+        ? next
+        : null
+
+    if (safeNext) {
+      url.pathname = safeNext.split('?')[0]
+      const qIndex = safeNext.indexOf('?')
+      url.search = qIndex === -1 ? '' : safeNext.slice(qIndex)
+    } else {
+      url.pathname = '/app'
+      url.search = ''
+    }
     return NextResponse.redirect(url)
   }
 

@@ -94,8 +94,12 @@ export function AppLayout({
   }
 
   const onLogout = async () => {
+    // Wait for the sign-out to actually complete before navigating. Without
+    // the refresh, Next can serve a cached Server Component tree that still
+    // believes a session exists, briefly showing the app after logout.
     await createClient().auth.signOut()
     router.replace('/login')
+    router.refresh()
   }
 
   return (

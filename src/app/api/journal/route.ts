@@ -1,5 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import {
+  asBoolean,
+  asHttpUrl,
+  asText,
+  asUuid,
+  badRequest,
+  readJson,
+} from '@/lib/security'
 
 export async function GET() {
   const supabase = await createClient()
@@ -35,17 +43,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json()
+  const body = await readJson(request)
+  if (!body) return badRequest('Invalid request body.')
+
+  const content = asText(body.content, { min: 1, max: 20000 })
+  if (!content) return badRequest('Entry content is required (max 20,000 characters).')
+
+  const mediaUrls = Array.isArray(body.media_urls)
+    ? body.media_urls
+        .slice(0, 9)
+        .map((u) => asHttpUrl(u))
+        .filter((u): u is string => u !== null)
+    : []
+
+  const moodTag = asText(body.mood_tag, { min: 1, max: 40 })
 
   const { data, error } = await supabase
     .from('journal_entries')
     .insert([{
       user_id: user.id,
-      content: body.content,
-      media_urls: body.media_urls || [],
-      mood_tag: body.mood_tag,
-      is_anonymous: body.is_anonymous ?? true,
-      is_private: body.is_private ?? true,
+      content,
+      media_urls: mediaUrls,
+      mood_tag: moodTag,
+      is_anonymous: asBoolean(body.is_anonymous, true),
+      is_private: asBoolean(body.is_private, true),
     }])
     .select()
 
@@ -67,10 +88,10 @@ export async function DELETE(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const id = searchParams.get('id')
+  const id = asUuid(searchParams.get('id'))
 
   if (!id) {
-    return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+    return badRequest('A valid entry id is required.')
   }
 
   const { error } = await supabase

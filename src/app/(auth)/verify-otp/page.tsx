@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Heart, CheckCircle2, Loader2, Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { authErrorMessage } from '@/lib/auth-errors'
 import { useSearchParams } from 'next/navigation'
 
 const supabase = createClient()
@@ -135,11 +136,13 @@ function VerifyOtpForm() {
       setError(
         verifyError.message === 'Email not confirmed'
           ? 'Code galat hai ya expire ho gaya. Naya code maango ya dobara try karo.'
-          : verifyError.message
+          : authErrorMessage(verifyError)
       )
       return
     }
     setVerified(true)
+    // Provision the profile row before onboarding reads from it.
+    await fetch('/api/profile/ensure', { method: 'POST' }).catch(() => undefined)
     setTimeout(() => router.push('/onboarding'), 1200)
   }
 
@@ -151,10 +154,12 @@ function VerifyOtpForm() {
     const { error: resendError } = await supabase.auth.resend({
       type: 'signup',
       email,
+      // Keep link-based confirmations pointed at /auth/confirm on resend too.
+      options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
     })
     setResending(false)
     if (resendError) {
-      setError(resendError.message)
+      setError(authErrorMessage(resendError))
       return
     }
     setCountdown(RESEND_SECONDS)

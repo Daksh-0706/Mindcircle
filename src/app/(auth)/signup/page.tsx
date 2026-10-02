@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Heart, Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { authErrorMessage } from '@/lib/auth-errors'
 
 const supabase = createClient()
 
@@ -72,17 +73,27 @@ export default function SignupPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: {
+        data: { full_name: name },
+        // Where the confirmation link should land. /auth/confirm exchanges the
+        // token for a session and continues to onboarding. Without this,
+        // Supabase falls back to the project Site URL, which may not exist.
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+      },
     })
     setLoading(false)
     if (signUpError) {
-      setError(signUpError.message)
+      // Don't echo Supabase's message verbatim — some messages distinguish
+      // whether an account exists, which is account enumeration.
+      setError(authErrorMessage(signUpError))
       return
     }
     // Agar "Confirm email" disabled hai (dev mode) to session turant mil
     // jata hai — seedha onboarding bhejo, OTP skip.
     if (data.session) {
-      router.push('/onboarding')
+      await fetch('/api/profile/ensure', { method: 'POST' }).catch(() => undefined)
+      router.replace('/onboarding')
+      router.refresh()
       return
     }
     router.push(`/verify-otp?email=${encodeURIComponent(email)}`)

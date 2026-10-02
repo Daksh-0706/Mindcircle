@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, ArrowRight, ChevronRight } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import NotoEmoji from '../../../components/ui/NotoEmoji'
 
 const pageTransition = {
@@ -62,24 +63,48 @@ export default function OnboardingPage() {
   const [[current, direction], setCurrent] = useState([0, 0])
   const isLast = current === slides.length - 1
 
+  // Provision the profile row as soon as we get here. The dashboard and
+  // several API routes read `users`, so a signup that skipped this step
+  // would land the user on a broken first screen.
+  useEffect(() => {
+    let active = true
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (!active) return
+        if (!data.user) {
+          router.replace('/login')
+          return
+        }
+        return fetch('/api/profile/ensure', { method: 'POST' }).catch(() => undefined)
+      })
+      .catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [router])
+
   const slide = slides[current]
 
   const paginate = (newDirection: number) => {
     const next = current + newDirection
     if (next < 0) return
     if (next >= slides.length) {
-      router.push('/app')
+      router.replace('/app')
+      router.refresh()
       return
     }
     setCurrent([next, newDirection])
   }
 
   const handleSkip = () => {
-    router.push('/app')
+    router.replace('/app')
+    router.refresh()
   }
 
   const handleGetStarted = () => {
-    router.push('/app')
+    router.replace('/app')
+    router.refresh()
   }
 
   return (

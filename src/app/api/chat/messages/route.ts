@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { asBoolean, asEnum, asText, asUuid, badRequest, readJson } from '@/lib/security'
+
+const MESSAGE_TYPES = ['text', 'image', 'audio'] as const
+const MESSAGE_MAX = 4000
 
 /**
  * GET /api/chat/messages?room_id=<uuid>
@@ -18,10 +22,10 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const roomId = searchParams.get('room_id')
+  const roomId = asUuid(searchParams.get('room_id'))
 
   if (!roomId) {
-    return NextResponse.json({ error: 'Missing room_id' }, { status: 400 })
+    return badRequest('A valid room_id is required.')
   }
 
   // Auto-join (idempotent): without a membership row, RLS hides every message.
@@ -71,20 +75,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json()
+  const body = await readJson(request)
+  if (!body) return badRequest('Invalid request body.')
 
-  if (!body.room_id || !body.content?.trim()) {
-    return NextResponse.json({ error: 'Missing room_id or content' }, { status: 400 })
+  const roomId = asUuid(body.room_id)
+  const content = asText(body.content, { min: 1, max: MESSAGE_MAX })
+
+  if (!roomId || !content) {
+    return badRequest('A valid room_id and message content are required.')
   }
 
   const { data, error } = await supabase
     .from('messages')
     .insert([{
-      room_id: body.room_id,
+      room_id: roomId,
       sender_id: user.id,
-      content: body.content.trim(),
-      message_type: body.message_type || 'text',
-      is_anonymous: body.is_anonymous ?? true,
+      content,
+      message_type: asEnum(body.message_type, MESSAGE_TYPES, 'text'),
+      is_anonymous: asBoolean(body.is_anonymous, true),
     }])
     .select()
 

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { asUuid, badRequest, readJson } from '@/lib/security'
 
 /**
  * GET /api/chat — active rooms with member count + last message preview.
@@ -73,12 +74,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await request.json()
+  const body = await readJson(request)
+  if (!body) return badRequest('Invalid request body.')
+
+  const roomId = asUuid(body.room_id)
+  if (!roomId) return badRequest('A valid room_id is required.')
 
   const { data, error } = await supabase
     .from('room_members')
     .insert([{
-      room_id: body.room_id,
+      room_id: roomId,
       user_id: user.id,
     }])
     .select()
@@ -104,10 +109,10 @@ export async function DELETE(request: Request) {
   }
 
   const { searchParams } = new URL(request.url)
-  const roomId = searchParams.get('room_id')
+  const roomId = asUuid(searchParams.get('room_id'))
 
   if (!roomId) {
-    return NextResponse.json({ error: 'Missing room_id' }, { status: 400 })
+    return badRequest('A valid room_id is required.')
   }
 
   const { error } = await supabase
