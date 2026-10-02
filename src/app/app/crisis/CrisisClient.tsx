@@ -388,9 +388,14 @@ export default function CrisisPage() {
         </div>
 
         {/* ── Floating gradient CTA pill ────────────── */}
+        {/*
+          `bottom-24` clears the BottomNav, which only renders below 1024.
+          From `lg` up there is no bottom bar, so the pill drops to a normal
+          margin instead of floating 96px up with a gap beneath it.
+        */}
         <a
           href="tel:9152987821"
-          className="fixed bottom-24 left-4 right-4 z-50 mx-auto flex w-auto max-w-xl items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#3A1F4A] via-[#5B3E8E] to-[#C45D3E] px-6 py-4 text-base font-bold text-white shadow-[0_12px_40px_rgba(42,27,61,0.35)] transition-transform hover:-translate-y-0.5 sm:left-1/2 sm:right-auto sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:hover:-translate-x-1/2 sm:hover:-translate-y-0.5"
+          className="fixed bottom-24 left-4 right-4 z-50 mx-auto flex w-auto max-w-xl items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#3A1F4A] via-[#5B3E8E] to-[#C45D3E] px-6 py-4 text-base font-bold text-white shadow-[0_12px_40px_rgba(42,27,61,0.35)] transition-transform hover:-translate-y-0.5 sm:left-1/2 sm:right-auto sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:hover:-translate-x-1/2 sm:hover:-translate-y-0.5 lg:bottom-8"
         >
           <Phone className="h-5 w-5" />
           Call iCall Now: 9152987821
