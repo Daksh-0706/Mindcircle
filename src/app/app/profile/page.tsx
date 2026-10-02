@@ -10,6 +10,7 @@ import { aliasFor } from '../../../lib/alias'
 import { formatMonthYear, formatShortDate } from '../../../lib/dates'
 import Skeleton from '../../../components/ui/Skeleton'
 import EmptyState from '../../../components/ui/EmptyState'
+import NotoEmoji from '../../../components/ui/NotoEmoji'
 
 type Entry = { id: string; content: string; mood_tag?: string | null; created_at: string }
 type Match = { id: string; user1_id: string; user2_id: string; similarity_score: number; match_reason: string | null }
@@ -46,7 +47,7 @@ export default function ProfilePage() {
   const isMobile = useIsMobile()
   const isDesktop = useIsDesktop()
 
-  const [me, setMe] = useState<{ email: string | null; createdAt: string; avatarEmoji: string; anonymousId: string } | null>(null)
+  const [me, setMe] = useState<{ email: string | null; fullName: string | null; createdAt: string; avatarEmoji: string; anonymousId: string } | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
   const [matches, setMatches] = useState<Match[]>([])
   const [moodLogs, setMoodLogs] = useState<{ created_at: string }[]>([])
@@ -65,6 +66,7 @@ export default function ProfilePage() {
         if (meJson) {
           setMe({
             email: meJson.user?.email ?? null,
+            fullName: typeof meJson.user?.fullName === 'string' ? meJson.user.fullName : null,
             createdAt: meJson.user?.createdAt ?? '',
             avatarEmoji: meJson.profile?.avatar_emoji || '😊',
             anonymousId: meJson.profile?.anonymous_id || 'anon',
@@ -105,8 +107,8 @@ export default function ProfilePage() {
     { id: 'gratitude', title: 'Gratitude Master', description: 'Write 50 journal entries', icon: Heart, earned: entries.length >= 50 },
   ]
 
-  const displayName = me ? nameFromEmail(me.email) : 'Member'
-  const initials = initialsFrom(me?.email)
+  const displayName = me?.fullName?.trim() || (me ? nameFromEmail(me.email) : 'Member')
+  const initials = displayName.slice(0, 2).toUpperCase()
   const alias = me?.anonymousId ? aliasFor(me.anonymousId) : 'anonymous-you'
 
   return (
@@ -129,7 +131,11 @@ export default function ProfilePage() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="font-heading text-2xl font-bold text-plum md:text-3xl">
-                  {loading ? 'Loading…' : `${displayName} ${me?.avatarEmoji ?? ''}`}
+                  {loading ? 'Loading…' : (
+                    <span className="inline-flex items-center gap-2">
+                      {displayName} {me?.avatarEmoji && <NotoEmoji emoji={me.avatarEmoji} size={22} />}
+                    </span>
+                  )}
                 </h1>
                 <button className="glass-card rounded-full p-2" aria-label="Edit profile">
                   <Edit size={16} className="text-plum" />
@@ -221,7 +227,7 @@ export default function ProfilePage() {
                           <p className="text-base font-bold text-plum">{titleOf(entry.content)}</p>
                           <p className="mt-0.5 line-clamp-1 text-[13px] text-charcoal/90">{previewOf(entry.content)}</p>
                         </div>
-                        {entry.mood_tag && <span className="shrink-0 text-xl">{entry.mood_tag}</span>}
+                        {entry.mood_tag && <NotoEmoji emoji={entry.mood_tag} size={22} className="shrink-0" />}
                         <ChevronRight size={16} className="shrink-0 text-warm-gray" />
                       </div>
                     ))}

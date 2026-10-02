@@ -11,16 +11,21 @@ import { cn } from '../../../lib/utils'
 type SettingItem = {
   id: string
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; size?: number }>
   action: 'toggle' | 'chevron' | 'value'
   href?: string
   description?: string
+  iconBg?: string
+  iconColor?: string
 }
 
 type SettingsSection = {
   id: string
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; size?: number }>
+  iconBg?: string
+  /** decorative blobs at the top-right of the card */
+  decor?: boolean
   items: SettingItem[]
 }
 
@@ -30,9 +35,9 @@ const settingsSections: SettingsSection[] = [
     label: 'Account',
     icon: User,
     items: [
-      { id: 'edit-profile', label: 'Edit Profile', icon: User, action: 'chevron', href: '/app/profile' },
-      { id: 'change-password', label: 'Change Password', icon: Lock, action: 'chevron' },
-      { id: 'email', label: 'Email', icon: Mail, action: 'value' },
+      { id: 'edit-profile', label: 'Edit Profile', icon: User, action: 'chevron', href: '/app/settings/edit-profile', iconBg: 'bg-[#EFEAFB]', iconColor: 'text-[#6B4A80]' },
+      { id: 'change-password', label: 'Change Password', icon: Lock, action: 'chevron', href: '/app/settings/change-password', iconBg: 'bg-[#FBE7EC]', iconColor: 'text-[#A34A6B]' },
+      { id: 'email', label: 'Email', icon: Mail, action: 'value', iconBg: 'bg-[#EFEAFB]', iconColor: 'text-[#6B4A80]' },
     ],
   },
   {
@@ -40,38 +45,64 @@ const settingsSections: SettingsSection[] = [
     label: 'Privacy',
     icon: Shield,
     items: [
-      { id: 'private-account', label: 'Private Account', icon: Eye, action: 'toggle', description: 'Only approved followers can see your posts' },
-      { id: 'show-online', label: 'Show Online Status', icon: Smartphone, action: 'toggle', description: "Let others see when you're active" },
+      { id: 'private-account', label: 'Private Account', icon: Eye, action: 'toggle', description: 'Only approved followers can see your content.', iconBg: 'bg-[#FBEEDC]', iconColor: 'text-[#D08A3E]' },
+      { id: 'show-online', label: 'Show Online Status', icon: Smartphone, action: 'toggle', description: "Let others see when you're active.", iconBg: 'bg-[#EFEAFB]', iconColor: 'text-[#6B4A80]' },
     ],
   },
   {
     id: 'notifications',
     label: 'Notifications',
     icon: Bell,
+    decor: true,
     items: [
-      { id: 'push', label: 'Push Notifications', icon: Smartphone, action: 'toggle', description: 'Receive notifications on your device' },
-      { id: 'email-notifs', label: 'Email Notifications', icon: Mail, action: 'toggle', description: 'Receive updates via email' },
+      { id: 'push', label: 'Push Notifications', icon: Smartphone, action: 'toggle', description: 'Receive notifications on your device.', iconBg: 'bg-[#FDF0F4]', iconColor: 'text-[#A34A6B]' },
+      { id: 'email-notifs', label: 'Email Notifications', icon: Mail, action: 'toggle', description: 'Receive updates via email.', iconBg: 'bg-[#FBE7EC]', iconColor: 'text-[#A34A6B]' },
     ],
   },
   {
     id: 'appearance',
     label: 'Appearance',
     icon: Sun,
+    decor: true,
     items: [
-      { id: 'dark-mode', label: 'Dark Mode', icon: Moon, action: 'toggle', description: 'Visual only — not functional yet' },
+      { id: 'dark-mode', label: 'Dark Mode', icon: Moon, action: 'toggle', description: 'Visual only — not functional settings.', iconBg: 'bg-[#FBEEDC]', iconColor: 'text-[#D08A3E]' },
     ],
   },
   {
     id: 'help',
     label: 'Help',
     icon: HelpCircle,
+    decor: true,
     items: [
-      { id: 'faq', label: 'FAQ', icon: HelpCircle, action: 'chevron', href: '/app/help/faq' },
-      { id: 'support', label: 'Contact Support', icon: LifeBuoy, action: 'chevron', href: '/app/help/support' },
-      { id: 'about', label: 'About', icon: Info, action: 'chevron' },
+      { id: 'faq', label: 'FAQ', icon: HelpCircle, action: 'chevron', href: '/app/help/faq', iconBg: 'bg-[#EFEAFB]', iconColor: 'text-[#6B4A80]' },
+      { id: 'support', label: 'Contact Support', icon: LifeBuoy, action: 'chevron', href: '/app/help/support', iconBg: 'bg-[#FBE7EC]', iconColor: 'text-[#A34A6B]' },
+      { id: 'about', label: 'About', icon: Info, action: 'chevron', href: '/app/help/about', iconBg: 'bg-[#EFEAFB]', iconColor: 'text-[#6B4A80]' },
     ],
   },
 ]
+
+/** Toggle styled like the mockup: plum when on, beige when off, big white knob. */
+function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      className={cn(
+        'relative inline-flex h-10 w-[72px] shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-plum/40 focus:ring-offset-2',
+        on ? 'bg-[#3D2060]' : 'bg-[#E5D9CE]',
+      )}
+    >
+      <span
+        className={cn(
+          'inline-block h-8 w-8 transform rounded-full bg-white shadow-md transition-transform',
+          on ? 'translate-x-[34px]' : 'translate-x-1',
+        )}
+      />
+    </button>
+  )
+}
 
 export default function SettingsPage() {
   const [toggles, setToggles] = useState<Record<string, boolean>>({
@@ -118,72 +149,130 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream pb-safe">
-      <div className="page-enter mx-auto max-w-3xl space-y-4 py-2">
-        <h1 className="font-heading text-[32px] font-bold text-plum">Settings</h1>
-        {savingPrefs && <p className="text-right text-xs text-warm-gray">Saving preferences…</p>}
+    <div className="relative min-h-screen bg-[#FBF3EA] pb-safe">
+      {/* soft page blobs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-[#EFDFF3]/60 blur-2xl" />
+        <div className="absolute -right-20 top-1/2 h-80 w-80 rounded-full bg-[#F6DFCB]/60 blur-2xl" />
+        <div className="absolute -left-16 bottom-10 h-64 w-64 rounded-full bg-[#E4D9F5]/50 blur-2xl" />
+      </div>
 
+      <div className="page-enter relative mx-auto max-w-3xl space-y-5 py-2">
+        {/* ── Hero ─────────────────────────────────────────────── */}
+        <section className="relative overflow-hidden rounded-b-[28px] px-2 pb-4 pt-6">
+          {/* leaf illustration top-right */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/settings-leaves.png"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-4 -top-6 h-56 w-auto object-contain sm:h-64"
+          />
+          <div className="relative max-w-[65%]">
+            <h1 className="font-heading text-[46px] font-bold leading-none text-[#3D2060]">Settings</h1>
+            <svg width="150" height="12" viewBox="0 0 150 12" className="mt-2" aria-hidden="true">
+              <path d="M2 7 Q 24 2, 46 6 T 90 6 T 146 5" fill="none" stroke="#E08A54" strokeWidth="4" strokeLinecap="round" />
+            </svg>
+            <p className="mt-4 max-w-xs text-[18px] leading-7 text-charcoal/75">
+              Manage your account, privacy and preferences.
+            </p>
+          </div>
+          {savingPrefs && <p className="relative mt-2 text-right text-xs text-warm-gray">Saving preferences…</p>}
+        </section>
+
+        {/* ── Section cards ────────────────────────────────────── */}
         {settingsSections.map((section) => (
-          <section key={section.id} className="rounded-[20px] border border-warm-gray-lighter bg-white p-2">
-            <div className="flex items-center gap-3 px-4 pb-1 pt-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-plum/10 text-plum">
-                <section.icon className="h-4.5 w-4.5" />
-              </span>
-              <h2 className="font-heading text-base font-bold text-plum">{section.label}</h2>
-            </div>
-            <div className="space-y-1 p-2">
-              {section.items.map((item) => (
-                <div
-                  key={item.id}
-                  className={cn(
-                    'flex items-center justify-between gap-3 rounded-xl px-4 py-3.5',
-                    item.action === 'toggle' ? 'bg-cream-dark/40' : 'hover:bg-cream-dark/50',
-                  )}
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-4">
-                    <span className={cn(
-                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                      item.action === 'toggle' ? 'border border-warm-gray-lighter bg-white text-warm-gray' : 'bg-plum/10 text-plum',
-                    )}>
-                      <item.icon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-charcoal">{item.label}</p>
-                      {item.description && <p className="mt-0.5 truncate text-sm text-warm-gray">{item.description}</p>}
-                      {item.id === 'email' && <p className="mt-0.5 truncate text-sm text-warm-gray">{email || 'Loading…'}</p>}
-                    </div>
-                  </div>
+          <section
+            key={section.id}
+            className="relative overflow-hidden rounded-[24px] border border-white/80 bg-white/75 shadow-[0_4px_18px_rgba(74,44,94,0.06)] backdrop-blur-sm"
+          >
+            {/* inner decor blobs top-right */}
+            {section.decor && (
+              <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+                <div className="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-[#EFE3F6]/70 blur-md" />
+                <div className="absolute right-10 -top-6 h-20 w-24 rounded-full bg-[#F8E3D3]/80 blur-sm" />
+                {/* leaf accents */}
+                <Leaf className="absolute right-4 top-4 h-7 w-7 rotate-[25deg] text-[#9BB89C]/70" />
+                <Leaf className="absolute right-14 top-12 h-5 w-5 rotate-[60deg] text-[#B7A7DB]/60" />
+              </div>
+            )}
 
-                  <div className="flex shrink-0 items-center gap-3">
-                    {item.action === 'toggle' && (
-                      <button
-                        onClick={() => handleToggle(item.id)}
-                        role="switch"
-                        aria-checked={toggles[item.id] ?? false}
-                        aria-label={item.label}
-                        className={cn(
-                          'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-plum focus:ring-offset-2',
-                          toggles[item.id] ? 'bg-plum' : 'bg-warm-gray-lighter',
-                        )}
-                      >
+            <div className="relative px-6 pb-5 pt-5">
+              {/* section header */}
+              <div className="mb-4 flex items-center gap-4">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#EFEAFB] text-[#4A2C6E] shadow-[0_2px_8px_rgba(74,44,94,0.08)]">
+                  <section.icon size={24} />
+                </span>
+                <h2 className="font-heading text-[24px] font-bold text-[#3D2060]">{section.label}</h2>
+              </div>
+
+              {/* items */}
+              <div className="space-y-2.5">
+                {section.items.map((item) => {
+                  const rowContent = (
+                    <>
+                      <div className="flex min-w-0 flex-1 items-center gap-4">
                         <span className={cn(
-                          'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                          toggles[item.id] ? 'translate-x-6' : 'translate-x-1',
-                        )} />
-                      </button>
-                    )}
-                    {item.action === 'chevron' && item.href && (
-                      <Link href={item.href} className="flex items-center gap-2 text-warm-gray transition-colors hover:text-plum" aria-label={item.label}>
-                        <ChevronRight className="h-4 w-4" />
+                          'flex h-12 w-12 shrink-0 items-center justify-center rounded-full',
+                          item.iconBg ?? 'bg-[#EFEAFB]',
+                          item.iconColor ?? 'text-[#6B4A80]',
+                        )}>
+                          <item.icon size={21} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-[17px] font-semibold text-charcoal">{item.label}</p>
+                          {(item.description || item.id === 'email') && (
+                            <p className="mt-0.5 truncate text-[14.5px] leading-6 text-warm-gray">
+                              {item.id === 'email' ? (email || 'Loading…') : item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {item.action === 'toggle' && (
+                        <Toggle on={toggles[item.id] ?? false} onClick={() => handleToggle(item.id)} label={item.label} />
+                      )}
+                      {item.action === 'chevron' && item.href && (
+                        <ChevronRight className="h-5 w-5 shrink-0 text-charcoal/60" />
+                      )}
+                    </>
+                  )
+
+                  // Chevron rows: whole bar is a link. Others: plain row.
+                  if (item.action === 'chevron' && item.href) {
+                    return (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        className="flex items-center justify-between gap-3 rounded-[18px] bg-[#F7F1FB]/70 px-4 py-3.5 transition-all hover:-translate-y-0.5 hover:bg-[#F1E9F8]/80"
+                        aria-label={item.label}
+                      >
+                        {rowContent}
                       </Link>
-                    )}
-                  </div>
-                </div>
-              ))}
+                    )
+                  }
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 rounded-[18px] bg-[#F7F1FB]/70 px-4 py-3.5"
+                    >
+                      {rowContent}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </section>
         ))}
       </div>
     </div>
+  )
+}
+
+function Leaf({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8Z" />
+    </svg>
   )
 }

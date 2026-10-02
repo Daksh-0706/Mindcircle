@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, ArrowRight, ChevronRight } from 'lucide-react'
+import NotoEmoji from '../../../components/ui/NotoEmoji'
 
 const pageTransition = {
   initial: { opacity: 0, y: 12 },
@@ -130,7 +131,7 @@ export default function OnboardingPage() {
                         ease: 'easeInOut',
                       }}
                     >
-                      <span className="text-7xl">{slide.emoji}</span>
+                      <NotoEmoji emoji={slide.emoji} size={84} />
                     </motion.div>
                   </div>
 

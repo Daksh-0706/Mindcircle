@@ -55,6 +55,9 @@ export async function POST(request: Request) {
 
   const body = await request.json()
 
+  // Stories live for 24 hours, Instagram-style.
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
   const { data, error } = await supabase
     .from('stories')
     .insert([{
@@ -62,6 +65,7 @@ export async function POST(request: Request) {
       content: body.content,
       media_url: body.media_url,
       mood_emoji: body.mood_emoji,
+      expires_at: expiresAt,
     }])
     .select()
 

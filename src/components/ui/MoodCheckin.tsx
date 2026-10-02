@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { MOOD_EMOJIS } from '../../lib/constants'
-import EmojiSlider from './EmojiSlider'
+import MoodPicker from './MoodPicker'
 import { cn } from '../../lib/utils'
 
 export interface MoodCheckinResult {
@@ -69,7 +69,11 @@ export default function MoodCheckin({ onSave, className }: MoodCheckinProps) {
         <p className="text-sm text-warm-gray">Tap an emoji to log your mood</p>
       </div>
 
-      <EmojiSlider emojis={MOOD_EMOJIS} selected={selected} onSelect={setSelected} />
+      <MoodPicker
+        variant="full"
+        selected={selectedMood?.emoji ?? null}
+        onSelect={(emoji) => setSelected(emoji ? MOOD_EMOJIS.find((m) => m.emoji === emoji)?.label ?? null : null)}
+      />
 
       <AnimatePresence initial={false}>
         {selectedMood && (

@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import {
   createContext,
   useCallback,
@@ -49,15 +50,26 @@ const AppNavContext = createContext<AppNavContextValue>({
  * `/app/*` page can register its own chrome preferences via <AppNav />.
  */
 export function AppNavProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const [patch, setPatch] = useState<Partial<AppNavState>>({})
 
   const setNav = useCallback((next: Partial<AppNavState>) => {
     setPatch((prev) => ({ ...prev, ...next }))
   }, [])
 
+  // Default back action: go one step back in history if possible,
+  // otherwise fall through to the dashboard.
+  const defaultOnBack = useCallback(() => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/app')
+    }
+  }, [router])
+
   const value = useMemo<AppNavContextValue>(
-    () => ({ nav: { ...DEFAULT_NAV, ...patch }, setNav }),
-    [patch, setNav],
+    () => ({ nav: { ...DEFAULT_NAV, onBack: defaultOnBack, ...patch }, setNav }),
+    [patch, setNav, defaultOnBack],
   )
 
   return <AppNavContext.Provider value={value}>{children}</AppNavContext.Provider>

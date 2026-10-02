@@ -19,12 +19,12 @@ export const SIDEBAR_ITEMS = [
 ] as const
 
 export const MOOD_EMOJIS = [
-  { emoji: '😊', label: 'Happy', color: '#F4C542', score: 5 },
-  { emoji: '😌', label: 'Peaceful', color: '#7B9E6B', score: 4 },
-  { emoji: '😐', label: 'Neutral', color: '#8A8A8A', score: 3 },
-  { emoji: '😤', label: 'Frustrated', color: '#C45D3E', score: 2 },
-  { emoji: '😰', label: 'Anxious', color: '#9B6B9E', score: 2 },
-  { emoji: '😔', label: 'Sad', color: '#6B8CBA', score: 1 },
+  { emoji: '😊', image: '/emojis/happy.png', label: 'Happy', color: '#F4C542', score: 5 },
+  { emoji: '😌', image: '/emojis/peaceful.png', label: 'Peaceful', color: '#7B9E6B', score: 4 },
+  { emoji: '😐', image: '/emojis/neutral.png', label: 'Neutral', color: '#8A8A8A', score: 3 },
+  { emoji: '😤', image: '/emojis/frustrated.png', label: 'Frustrated', color: '#C45D3E', score: 2 },
+  { emoji: '😰', image: '/emojis/anxious.png', label: 'Anxious', color: '#9B6B9E', score: 2 },
+  { emoji: '😔', image: '/emojis/sad.png', label: 'Sad', color: '#6B8CBA', score: 1 },
 ] as const
 
 export const FEATURES = [

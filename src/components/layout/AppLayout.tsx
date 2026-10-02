@@ -8,6 +8,7 @@ import { MobileHeader } from './MobileHeader'
 import BottomNav from './BottomNav'
 import { TopBar } from './TopBar'
 import { AppNavProvider, useAppNav } from './AppNavContext'
+import { NotificationsProvider } from './NotificationsContext'
 import { useIsMobile, useIsTablet, useIsDesktop } from '../../hooks/useMediaQuery'
 import { cn } from '../../lib/utils'
 
@@ -98,7 +99,8 @@ export function AppLayout({
   }
 
   return (
-    <AppNavProvider>
+    <NotificationsProvider>
+      <AppNavProvider>
       <Shell
         compact={compact}
         isDesktop={isDesktop}
@@ -114,6 +116,7 @@ export function AppLayout({
         {children}
       </Shell>
     </AppNavProvider>
+    </NotificationsProvider>
   )
 }
 
@@ -158,29 +161,32 @@ function Shell({
           />
         )}
 
-        {/* Drawer backdrop */}
+        {/* Drawer backdrop — darkens the page, sits above header/bottom nav */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-charcoal/30 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] bg-charcoal/60 backdrop-blur-sm transition-opacity"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         )}
 
-        {/* Sliding SideNav drawer */}
+        {/* Sliding SideNav drawer — above the backdrop and all page chrome */}
         <SideNav
           userName={userName}
           userInitials={userInitials}
           userRole={userRole}
           onLogout={onLogout}
+          onNavigate={() => setSidebarOpen(false)}
           className={cn(
-            'transition-transform duration-300 ease-out',
+            'z-[70] transition-transform duration-300 ease-out',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full',
           )}
         />
 
-        <main className={cn('relative flex-1 overflow-x-hidden', nav.showBottomNav && 'pb-20')}>
-          {children}
+        <main className="relative flex-1 overflow-x-hidden">
+          <div className={cn('mx-auto w-full px-4 pt-3 pb-6', nav.showBottomNav && 'pb-24')}>
+            {children}
+          </div>
         </main>
 
         {nav.showBottomNav && <BottomNav />}
@@ -222,7 +228,11 @@ function Shell({
       {nav.showMobileHeader && (
         <MobileHeader title={title} showBack={nav.showBack} onMenu={() => setSidebarOpen(true)} onBack={nav.showBack ? nav.onBack : undefined} />
       )}
-      <main className="relative flex-1 overflow-x-hidden">{children}</main>
+      <main className="relative flex-1 overflow-x-hidden">
+        <div className={cn('mx-auto w-full px-4 pt-3 pb-6', nav.showBottomNav && 'pb-24')}>
+          {children}
+        </div>
+      </main>
       {nav.showBottomNav && <BottomNav />}
     </div>
   )

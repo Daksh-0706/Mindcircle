@@ -7,6 +7,7 @@ import { LockKeyhole, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatTime } from '../../../../lib/dates'
 import { aliasFor, roomDescription, roomEmoji } from '../../../../lib/alias'
+import NotoEmoji from '../../../../components/ui/NotoEmoji'
 
 type ChatMessage = {
   id: string
@@ -210,7 +211,7 @@ export default function ChatDetailPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-[19px] bg-cream-dark text-lg">
-                {isRoom ? roomEmoji(roomName) : '💬'}
+                <NotoEmoji emoji={isRoom ? roomEmoji(roomName) : '💬'} size={22} />
               </span>
               <div>
                 <h1 className="font-heading text-lg font-bold text-plum">{roomName}</h1>
@@ -321,7 +322,7 @@ export default function ChatDetailPage() {
         <div className="w-full space-y-4 lg:w-72 lg:shrink-0">
           <div className="flex flex-col items-center rounded-2xl border border-warm-gray-lighter bg-white p-6 text-center">
             <span className="flex h-16 w-16 items-center justify-center rounded-[32px] bg-cream-dark text-[32px]">
-              {isRoom ? roomEmoji(roomName) : '💬'}
+              <NotoEmoji emoji={isRoom ? roomEmoji(roomName) : '💬'} size={30} />
             </span>
             <h2 className="mt-4 font-heading text-xl font-bold text-plum">{roomName}</h2>
             <p className="mt-1 text-[13px] text-warm-gray">

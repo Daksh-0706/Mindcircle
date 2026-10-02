@@ -1,14 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ArrowLeft, Heart, Phone, Shield, BookOpen, Leaf, Play, Pause,
-  Loader2, CheckCircle, AlertCircle, X
+  ArrowLeft,
+  ArrowRight,
+  Heart,
+  Phone,
+  Shield,
+  BookOpen,
+  Sparkles,
+  X,
+  AlertCircle,
+  Leaf,
+  Flower2,
+  Play,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useIsMobile, useIsDesktop } from '../../../hooks/useMediaQuery'
-import { cn } from '../../../lib/utils'
 
 const helplines = [
   {
@@ -17,7 +25,8 @@ const helplines = [
     number: '9152987821',
     hours: '24/7',
     color: '#7B9E6B',
-    bgColor: 'bg-sage',
+    cardBg: 'linear-gradient(135deg, #E5F0DC 0%, #EDF4E6 45%, #F6FAF2 100%)',
+    buttonBg: 'linear-gradient(90deg, #7B9E6B 0%, #5C7A4F 100%)',
     description: 'Professional counseling via phone & email',
     icon: Phone,
   },
@@ -27,7 +36,8 @@ const helplines = [
     number: '1860-2662-345',
     hours: '24/7',
     color: '#4A2C5E',
-    bgColor: 'bg-plum',
+    cardBg: 'linear-gradient(135deg, #EDE7F7 0%, #F2ECFA 45%, #F9F6FD 100%)',
+    buttonBg: 'linear-gradient(90deg, #3A1F4A 0%, #6B4A80 100%)',
     description: 'Mental health support & crisis intervention',
     icon: Shield,
   },
@@ -37,324 +47,399 @@ const helplines = [
     number: '9820466726',
     hours: '24/7',
     color: '#C45D3E',
-    bgColor: 'bg-terracotta',
+    cardBg: 'linear-gradient(135deg, #FBE7DB 0%, #FDEFE5 45%, #FDF7F2 100%)',
+    buttonBg: 'linear-gradient(90deg, #A04830 0%, #D4785C 100%)',
     description: 'Suicide prevention & emotional support',
     icon: Heart,
   },
 ]
 
+const ANXIETY_FACT_SHEET_URL =
+  'https://headspace.org.au/assets/Factsheets/headspace_understanding-anxiety_Fact-Sheet_FA01_DIGI.pdf'
+
 const resources = [
   {
     title: 'Understanding Anxiety',
     description: 'Learn about anxiety symptoms, triggers, and evidence-based coping strategies.',
+    href: ANXIETY_FACT_SHEET_URL,
     icon: BookOpen,
     color: '#4A2C5E',
-    bg: 'from-plum/10 to-plum/5',
+    tint: '#EFE9F8',
+    showCta: true,
   },
   {
     title: 'Grounding Techniques',
     description: 'Quick 5-4-3-2-1 sensory exercises to manage panic and dissociation.',
+    href: ANXIETY_FACT_SHEET_URL,
     icon: Leaf,
-    color: '#7B9E6B',
-    bg: 'from-sage/10 to-sage/5',
+    color: '#5C7A4F',
+    tint: '#E9F1E3',
+    showCta: false,
   },
 ]
 
-/**
- * Each phase carries its own scale target AND its own scale animation duration:
- * - 'Breathe in'  : grows to `scale` over `duration`
- * - 'Hold'        : scaleDuration 0 → circle stays frozen at the inhale size
- * - 'Breathe out' : shrinks back to 1 immediately as the phase begins
- */
 const BREATHING_PHASES = [
-  { label: 'Breathe in...', duration: 3000, scale: 1.2, scaleDuration: 3 },
-  { label: 'Hold...', duration: 2000, scale: 1.2, scaleDuration: 0 },
-  { label: 'Breathe out...', duration: 5000, scale: 1, scaleDuration: 5 },
-] as const
+  { label: 'Breathe in...', ms: 3000, scale: 1.16 },
+  { label: 'Hold', ms: 2000, scale: 1.16 },
+  { label: 'Breathe out...', ms: 5000, scale: 1 },
+]
+
+function Squiggle({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 120 12" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M2 7C10 2 18 2 26 7s16 5 24 0 16-5 24 0 16 5 24 0 16-5 20-3"
+        stroke="#E8955C"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
 
 export default function CrisisPage() {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentPhase, setCurrentPhase] = useState(0)
-  const isMobile = useIsMobile()
-  const isDesktop = useIsDesktop()
+  const [popupOpen, setPopupOpen] = useState(false)
+  const [breathing, setBreathing] = useState(false)
+  const [phaseIdx, setPhaseIdx] = useState(0)
 
-  // Advance to the next phase when the current one ends.
+  // Auto-open the gentle nudge popup after a moment
   useEffect(() => {
-    if (!isPlaying) return
-
-    const t = setTimeout(() => {
-      setCurrentPhase((prev) => (prev + 1) % BREATHING_PHASES.length)
-    }, BREATHING_PHASES[currentPhase].duration)
-
+    const t = setTimeout(() => setPopupOpen(true), 1200)
     return () => clearTimeout(t)
-  }, [isPlaying, currentPhase])
+  }, [])
 
-  const phase = BREATHING_PHASES[currentPhase]
-  // Per-phase easing: the circle grows during inhale, is frozen during hold
-  // (duration 0) and shrinks for the full exhale duration.
-  const circleTransition = isPlaying
-    ? { duration: phase.scaleDuration, ease: 'easeInOut' as const }
-    : { duration: 0.3, ease: 'easeInOut' as const }
+  // Breathing phase cycle
+  useEffect(() => {
+    if (!breathing) return
+    const t = setTimeout(
+      () => setPhaseIdx((i) => (i + 1) % BREATHING_PHASES.length),
+      BREATHING_PHASES[phaseIdx].ms
+    )
+    return () => clearTimeout(t)
+  }, [breathing, phaseIdx])
+
+  const phase = BREATHING_PHASES[phaseIdx]
+
+  const toggleBreathing = () => {
+    if (breathing) {
+      setBreathing(false)
+      setPhaseIdx(0)
+    } else {
+      setPhaseIdx(0)
+      setBreathing(true)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-cream pb-safe">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="mesh-gradient min-h-screen"
-      >
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-cream/80 backdrop-blur-md border-b border-warm-gray-lighter">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <Link
-                href="/app"
-                className="glass-card p-2 rounded-xl hover:shadow-medium transition-shadow"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="w-5 h-5 text-charcoal" />
-              </Link>
+      <div className="relative min-h-screen overflow-hidden bg-[#FFF8F0]">
+        {/* Soft peach + lavender blob background */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(circle at 12% 18%, rgba(244, 196, 176, 0.45) 0%, rgba(244, 196, 176, 0) 40%),
+              radial-gradient(circle at 88% 30%, rgba(214, 196, 240, 0.40) 0%, rgba(214, 196, 240, 0) 42%),
+              radial-gradient(circle at 20% 65%, rgba(233, 214, 244, 0.35) 0%, rgba(233, 214, 244, 0) 45%),
+              radial-gradient(circle at 85% 85%, rgba(244, 204, 180, 0.35) 0%, rgba(244, 204, 180, 0) 45%),
+              linear-gradient(165deg, #FDF4EC 0%, #FBF0F4 50%, #F7EEF9 100%)
+            `,
+          }}
+        />
 
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2"
-              >
-                <Heart className="w-6 h-6" style={{ color: '#D64545' }} />
-                <span className="font-heading text-xl font-bold text-charcoal">Crisis Support</span>
-              </motion.div>
-
-              {/* Desktop: Call Now button in header */}
-              {isDesktop && (
-                <a
-                  href="tel:9152987821"
-                  className="btn-gradient px-5 py-2.5 rounded-xl font-medium text-sm flex items-center gap-2 shadow-strong"
-                >
-                  <Phone className="w-4 h-4" />
-                  Call Now
-                </a>
-              )}
-            </div>
-          </div>
+        {/* Hero background illustration (user-provided) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[440px] overflow-hidden sm:h-[540px]"
+          style={{
+            maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/crisis-hero.png"
+            alt=""
+            className="h-full w-full object-cover object-center"
+            style={{ objectPosition: 'center 42%' }}
+          />
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          {/* Hero Section */}
+        <div className="relative mx-auto max-w-3xl px-4 py-5 sm:px-6 lg:px-8">
+          {/* ── Header: back circle left, heart | title right ── */}
+          <div className="flex items-center justify-between">
+            <Link
+              href="/app"
+              aria-label="Back to home"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#2A1B3D] shadow-[0_4px_16px_rgba(42,27,61,0.12)] transition-transform hover:-translate-y-0.5"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div className="flex items-center gap-3">
+              <Heart className="h-6 w-6 text-[#E0685C]" fill="currentColor" />
+              <span aria-hidden="true" className="h-6 w-px bg-[#2A1B3D]/25" />
+              <span className="font-heading text-xl font-bold text-[#2A1B3D]">Crisis Support</span>
+            </div>
+          </div>
+
+          {/* ── Hero ─────────────────────────────────── */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-center mb-8"
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center"
           >
-            <motion.div
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 20 }}
-              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-              style={{ backgroundColor: '#D64545' }}
-            >
-              <Heart className="w-8 h-8 text-cream" />
-            </motion.div>
-            <h1 className="font-heading text-3xl md:text-4xl font-bold text-charcoal mb-2">
+            {/* Spacer so the heading sits below the background illustration */}
+            <div aria-hidden="true" className="h-[250px] sm:h-[330px]" />
+            <h1 className="font-heading text-4xl font-bold leading-tight text-[#2A1B3D] sm:text-5xl">
               You&apos;re not alone
             </h1>
-            <p className="text-lg text-warm-gray max-w-xl mx-auto">
+            <p className="mx-auto mt-4 max-w-xl text-lg leading-7 text-[#6B6B6B] sm:text-xl">
               If you&apos;re in crisis, please reach out right now. Help is available 24/7, and you matter.
             </p>
           </motion.section>
 
-          {/* Helpline Cards */}
+          {/* ── Immediate Help Cards ─────────────────── */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-8"
+            transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-10"
           >
-            <h2 className="font-heading text-xl font-bold text-charcoal mb-4">Immediate Help</h2>
-            <div className={cn(
-              'gap-4',
-              isDesktop ? 'grid grid-cols-3' : 'space-y-4'
-            )}>
+            <h2 className="font-heading text-2xl font-bold text-[#2A1B3D] sm:text-3xl">Immediate Help</h2>
+            <Squiggle className="mt-1 h-3 w-24" />
+
+            <div className="mt-5 grid gap-5">
               {helplines.map((helpline, index) => (
                 <motion.article
                   key={helpline.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                  className={cn(
-                    'rounded-2xl p-5 relative overflow-hidden shadow-soft',
-                    helpline.bgColor,
-                    isDesktop ? 'h-full flex flex-col' : ''
-                  )}
+                  transition={{ delay: 0.15 + index * 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="relative overflow-hidden rounded-[28px] p-6 shadow-[0_8px_32px_rgba(42,27,61,0.10)]"
+                  style={{ background: helpline.cardBg }}
                 >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-xl -translate-x-1/2 translate-y-1/2" />
+                  {/* Decorative leaf bleeding from the right edge */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/deco-leaf-right.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-6 top-2 h-full w-auto opacity-60 mix-blend-multiply"
+                    style={{
+                      maskImage: 'linear-gradient(to left, black 30%, transparent 100%)',
+                      WebkitMaskImage: 'linear-gradient(to left, black 30%, transparent 100%)',
+                    }}
+                  />
+
                   <div className="relative flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                      <helpline.icon className="w-6 h-6 text-cream" />
+                    <div
+                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-[0_6px_20px_rgba(42,27,61,0.22)]"
+                      style={{ backgroundColor: helpline.color }}
+                    >
+                      <helpline.icon className="h-6 w-6" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-heading text-lg font-bold text-cream mb-1">{helpline.name}</h3>
-                      <p className="text-cream/80 text-sm mb-2">{helpline.description}</p>
-                      <div className="flex items-center gap-3 text-sm">
-                        <span className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full">
-                          <span className="w-2 h-2 bg-sage rounded-full" />
-                          <span className="font-medium">{helpline.hours}</span>
-                        </span>
-                      </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-heading text-xl font-bold text-[#2A1B3D]">{helpline.name}</h3>
+                      <p className="mt-1 text-base leading-6 text-[#8A8A8A]">{helpline.description}</p>
+                      <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/70 px-3.5 py-1.5 text-sm font-semibold text-[#4A4A4A]">
+                        <span className="h-2 w-2 rounded-full bg-[#4CAF50]" />
+                        {helpline.hours}
+                      </span>
                     </div>
                   </div>
+
                   <a
                     href={`tel:${helpline.number.replace(/\D/g, '')}`}
-                    className="mt-4 block w-full text-center bg-white/20 hover:bg-white/30 text-cream font-medium py-3 rounded-xl transition-colors"
+                    className="relative mt-5 flex w-full items-center justify-center gap-3 rounded-full px-6 py-4 text-lg font-bold text-white shadow-[0_6px_20px_rgba(42,27,61,0.25)] transition-transform hover:-translate-y-0.5"
+                    style={{ background: helpline.buttonBg }}
                   >
+                    <Phone className="h-5 w-5" />
                     Call {helpline.number}
+                    <ArrowRight className="h-5 w-5" />
                   </a>
                 </motion.article>
               ))}
             </div>
           </motion.section>
 
-          {/* Breathing Circle */}
+          {/* ── Breathing Exercise ───────────────────── */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-8"
+            transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-12 text-center"
           >
-            <h2 className="font-heading text-xl font-bold text-charcoal mb-4 text-center">Breathing Exercise</h2>
-            <div className="flex flex-col items-center gap-6">
-              <div className="relative w-[280px] h-[280px]">
-                {/* Outer rings — follow the same per-phase scale as the main circle */}
-                {[3, 2, 1].map((ring) => (
-                  <motion.div
-                    key={ring}
-                    animate={{ scale: isPlaying ? phase.scale : 1 }}
-                    transition={circleTransition}
-                    className="absolute inset-0 rounded-full border-2"
-                    style={{ borderColor: '#4A2C5E', opacity: [0.15, 0.1, 0.05][ring - 1] }}
-                  />
-                ))}
+            <h2 className="font-heading text-2xl font-bold text-[#2A1B3D] sm:text-3xl">Breathing Exercise</h2>
+            <Squiggle className="mx-auto mt-1 h-3 w-28" />
+            <p className="mx-auto mt-3 max-w-md text-base leading-6 text-[#8A8A8A]">
+              Take a moment for yourself. Breathe, relax, and feel better.
+            </p>
 
-                {/* Main circle */}
-                <motion.div
-                  animate={{
-                    scale: isPlaying ? phase.scale : 1,
-                    boxShadow: isPlaying
-                      ? '0 0 60px rgba(74, 44, 94, 0.3)'
-                      : '0 0 30px rgba(74, 44, 94, 0.15)',
-                  }}
-                  transition={circleTransition}
-                  className="absolute inset-0 rounded-full bg-gradient-to-br from-plum/20 to-terracotta/20 flex items-center justify-center"
-                >
-                  <div className="text-center">
-                    <motion.p
-                      key={currentPhase}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="font-heading text-2xl font-medium text-plum"
-                    >
-                      {BREATHING_PHASES[currentPhase].label}
-                    </motion.p>
-                    <p className="text-sm text-warm-gray mt-2">
-                      {isPlaying ? 'Follow the circle' : 'Tap to start'}
-                    </p>
-                  </div>
-                </motion.div>
-              </div>
-
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="glass-card px-8 py-3 rounded-xl flex items-center gap-2 font-medium text-charcoal hover:shadow-medium transition-shadow"
-                aria-label={isPlaying ? 'Pause breathing exercise' : 'Start breathing exercise'}
+            <div className="relative mt-8 flex justify-center">
+              {/* Outer ring */}
+              <div
+                aria-hidden="true"
+                className="absolute h-[19rem] w-[19rem] rounded-full border border-[#E4D5F0]/70 sm:h-[21rem] sm:w-[21rem]"
+              />
+              <motion.button
+                type="button"
+                onClick={toggleBreathing}
+                aria-label={breathing ? 'Pause breathing exercise' : 'Start breathing exercise'}
+                animate={{ scale: breathing ? phase.scale : 1 }}
+                transition={{ duration: (breathing ? phase.ms : 600) / 1000, ease: 'easeInOut' }}
+                className="relative flex h-64 w-64 items-center justify-center rounded-full border-2 border-white/80 shadow-[0_16px_48px_rgba(74,44,94,0.18)] sm:h-72 sm:w-72"
+                style={{
+                  background: 'linear-gradient(160deg, #D6C8EF 0%, #E7D6EE 45%, #F7DFCC 100%)',
+                }}
               >
-                {isPlaying ? (
-                  <>
-                    <Pause className="w-5 h-5" />
-                    <span>Pause</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-5 h-5" />
-                    <span>Start</span>
-                  </>
-                )}
-              </button>
+                <span className="flex flex-col items-center gap-3 px-8">
+                  <Flower2 className="h-9 w-9 text-[#6B4A80]" />
+                  <span className="font-heading text-3xl font-medium text-[#3A2B54]">
+                    {breathing ? phase.label : 'Breathe in...'}
+                  </span>
+                  <span className="text-base text-[#7A6B8A]">
+                    {breathing ? 'Follow the circle' : 'Tap to start'}
+                  </span>
+                </span>
+              </motion.button>
             </div>
+
+            <button
+              type="button"
+              onClick={toggleBreathing}
+              className="mt-6 inline-flex items-center gap-2.5 rounded-full bg-[#E6DBF6] px-9 py-3.5 font-heading text-lg font-bold text-[#4A2C5E] shadow-[0_6px_20px_rgba(74,44,94,0.14)] transition-transform hover:-translate-y-0.5"
+            >
+              <Play className="h-5 w-5" fill="currentColor" />
+              {breathing ? 'Pause' : 'Start'}
+            </button>
           </motion.section>
 
-          {/* Resources */}
+          {/* ── Helpful Resources ────────────────────── */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mb-8"
+            transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-12"
           >
-            <h2 className="font-heading text-xl font-bold text-charcoal mb-4">Helpful Resources</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {resources.map((resource, index) => (
-                <motion.article
+            <h2 className="font-heading text-2xl font-bold text-[#2A1B3D] sm:text-3xl">Helpful Resources</h2>
+            <Squiggle className="mt-1 h-3 w-24" />
+
+            <div className="mt-5 grid gap-4">
+              {resources.map((resource) => (
+                <article
                   key={resource.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  className="glass-card rounded-2xl p-5 hover:shadow-medium transition-shadow"
+                  className="rounded-[28px] bg-white p-6 shadow-[0_8px_32px_rgba(42,27,61,0.08)]"
                 >
                   <div className="flex items-start gap-4">
-                    <div className={cn(
-                      'w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0',
-                      resource.bg
-                    )}>
-                      <resource.icon className="w-6 h-6" style={{ color: resource.color }} />
+                    <div
+                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: resource.tint, color: resource.color }}
+                    >
+                      <resource.icon className="h-7 w-7" />
                     </div>
-                    <div>
-                      <h3 className="font-heading font-bold text-charcoal">{resource.title}</h3>
-                      <p className="text-sm text-warm-gray mt-1">{resource.description}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-heading text-xl font-bold text-[#2A1B3D]">{resource.title}</h3>
+                        <ArrowRight className="h-4 w-4 rotate-[-45deg] text-[#6B4A80]" />
+                      </div>
+                      <p className="mt-1 text-base leading-6 text-[#8A8A8A]">{resource.description}</p>
+                      {resource.showCta && (
+                        <a
+                          href={resource.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#EFE9F8] px-5 py-2.5 text-sm font-bold text-[#4A2C5E] transition-transform hover:-translate-y-0.5"
+                        >
+                          Read the fact sheet <BookOpen className="h-4 w-4" /> <ArrowRight className="h-4 w-4" />
+                        </a>
+                      )}
                     </div>
                   </div>
-                </motion.article>
+                </article>
               ))}
             </div>
           </motion.section>
 
-          {/* Emergency Disclaimer */}
+          {/* ── Emergency Notice ─────────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="glass-card rounded-2xl p-4 border border-terracotta/30 bg-terracotta/5"
+            transition={{ duration: 0.4, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-4 rounded-[28px] bg-white p-6 shadow-[0_8px_32px_rgba(42,27,61,0.08)]"
           >
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-terracotta flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-terracotta-dark">Emergency Notice</p>
-                <p className="text-sm text-terracotta/80 mt-1">
-                  If you or someone else is in immediate danger, please call emergency services (112/911) or go to the nearest emergency room.
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#C45D3E]/12 text-[#C45D3E]">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-heading text-lg font-bold text-[#A04830]">Emergency Notice</p>
+                <p className="mt-1 text-base leading-6 text-[#C45D3E]">
+                  If you or someone else is in immediate danger, please call emergency services (112) or go to the
+                  nearest emergency room.
                 </p>
               </div>
             </div>
           </motion.div>
+
+          <div className="h-28" aria-hidden="true" />
         </div>
 
-        {/* Mobile: Sticky Call Now button */}
-        {isMobile && (
+        {/* ── Floating gradient CTA pill ────────────── */}
+        <a
+          href="tel:9152987821"
+          className="fixed bottom-24 left-4 right-4 z-50 mx-auto flex w-auto max-w-xl items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#3A1F4A] via-[#5B3E8E] to-[#C45D3E] px-6 py-4 text-base font-bold text-white shadow-[0_12px_40px_rgba(42,27,61,0.35)] transition-transform hover:-translate-y-0.5 sm:left-1/2 sm:right-auto sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:hover:-translate-x-1/2 sm:hover:-translate-y-0.5"
+        >
+          <Phone className="h-5 w-5" />
+          Call iCall Now: 9152987821
+          <ArrowRight className="h-5 w-5" />
+        </a>
+      </div>
+
+      {/* ── Popup nudge card ────────────────────────── */}
+      <AnimatePresence>
+        {popupOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="fixed bottom-0 left-0 right-0 pb-safe z-50 px-4 py-4 bg-gradient-to-t from-cream to-transparent"
+            role="dialog"
+            aria-label="Feeling anxious right now?"
+            initial={{ opacity: 0, y: 32, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 32, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+            className="fixed bottom-44 left-4 right-4 z-[60] mx-auto max-w-md rounded-[28px] bg-white p-5 shadow-[0_24px_64px_rgba(42,27,61,0.22)] sm:left-auto sm:right-8 sm:bottom-32 sm:mx-0"
           >
-            <a
-              href="tel:9152987821"
-              className="btn-gradient w-full py-4 rounded-xl font-medium text-base flex items-center justify-center gap-2 shadow-strong"
+            <button
+              type="button"
+              onClick={() => setPopupOpen(false)}
+              aria-label="Close"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#B0B0B0] transition-colors hover:bg-black/5 hover:text-[#4A4A4A]"
             >
-              <Phone className="w-5 h-5" />
-              Call iCall Now: 9152987821
-            </a>
+              <X className="h-4 w-4" />
+            </button>
+            <div className="flex items-start gap-4 pr-6">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EFE9F8] text-[#4A2C5E]">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-heading text-lg font-bold text-[#2A1B3D]">Feeling anxious right now?</h2>
+                <p className="mt-1 text-sm leading-5 text-[#8A8A8A]">
+                  A gentle, easy-to-read guide to understanding anxiety is one tap away.
+                </p>
+                <a
+                  href={ANXIETY_FACT_SHEET_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#3A1F4A] to-[#A04830] px-5 py-2.5 text-sm font-bold text-white shadow-[0_4px_16px_rgba(42,27,61,0.28)] transition-transform hover:-translate-y-0.5"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Read it now
+                </a>
+              </div>
+            </div>
           </motion.div>
         )}
-      </motion.div>
+      </AnimatePresence>
     </div>
   )
 }

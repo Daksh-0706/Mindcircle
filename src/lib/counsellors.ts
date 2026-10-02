@@ -32,17 +32,7 @@ export const COUNSELLORS: Counsellor[] = [
     color: 'bg-terracotta',
     bio: 'Change is hard even when it is good. I help students and young professionals navigate transitions with clarity and self-compassion.',
   },
-  {
-    slug: 'dr-kabir-shah',
-    name: 'Dr. Kabir Shah',
-    specialty: 'Stress · Relationships',
-    experience: '15 years',
-    initials: 'KS',
-    color: 'bg-plum',
-    bio: 'Together we untangle stress and relationship patterns at a pace that feels safe, building tools you can actually use day to day.',
-  },
 ]
-
 export function counsellorBySlug(slug: string): Counsellor | undefined {
   return COUNSELLORS.find((c) => c.slug === slug)
 }

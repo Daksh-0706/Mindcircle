@@ -2,9 +2,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AppNav } from '../../../components/layout/AppNavContext'
 import Skeleton from '../../../components/ui/Skeleton'
-import { TrendingUp } from 'lucide-react'
 import { MOOD_EMOJIS } from '../../../lib/constants'
 import { formatDefaultDate, formatShortDate, formatWeekday } from '../../../lib/dates'
+import { useIsMobile } from '../../../hooks/useMediaQuery'
+import NotoEmoji from '../../../components/ui/NotoEmoji'
 
 type MoodLog = {
   id: string
@@ -21,12 +22,12 @@ const RANGES = [
 ] as const
 
 const BAR_COLORS: Record<string, string> = {
-  '😌': 'bg-plum',
-  '😊': 'bg-sage',
-  '😐': 'bg-plum-light',
-  '😤': 'bg-terracotta',
-  '😰': 'bg-terracotta-light',
-  '😔': 'bg-warm-gray',
+  '😔': 'bg-[#6B8CBA]', // Sad — blue
+  '😌': 'bg-[#7B9E6B]', // Peaceful — sage
+  '😐': 'bg-[#8A8A8A]', // Neutral — gray
+  '😤': 'bg-[#C45D3E]', // Frustrated — terracotta
+  '😰': 'bg-[#9B6B9E]', // Anxious — purple
+  '😊': 'bg-[#E9B94A]', // Happy — gold
 }
 
 export default function InsightsPage() {
@@ -57,11 +58,13 @@ export default function InsightsPage() {
     }
   }, [])
 
+  const isMobile = useIsMobile()
   const days = RANGES.find((r) => r.key === target)?.days ?? 7
   const cutoff = now - days * 86400000
   const filtered = useMemo(() => logs.filter((l) => new Date(l.created_at).getTime() >= cutoff), [logs, cutoff])
 
-  // Daily averages, oldest first, for the timeline bars.
+  // Daily averages across EVERY day in the range (gaps become null),
+  // oldest first — this drives the line chart.
   const timeline = useMemo(() => {
     const byDay = new Map<string, { sum: number; count: number }>()
     for (const log of filtered) {
@@ -71,11 +74,19 @@ export default function InsightsPage() {
       entry.count += 1
       byDay.set(key, entry)
     }
-    return [...byDay.entries()]
-      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-      .slice(-14)
-      .map(([day, v]) => ({ day: new Date(day), avg: v.sum / v.count }))
-  }, [filtered])
+    const out: { day: Date; avg: number | null }[] = []
+    const start = new Date(now - (days - 1) * 86400000)
+    start.setHours(0, 0, 0, 0)
+    for (let i = 0; i < days; i++) {
+      const day = new Date(start.getTime() + i * 86400000)
+      const entry = byDay.get(day.toDateString())
+      out.push({ day, avg: entry ? entry.sum / entry.count : null })
+    }
+    return out
+  }, [filtered, days, now])
+
+  // Compact the label list: show ~6 evenly spaced date labels.
+  const labelEvery = Math.max(1, Math.ceil(timeline.length / 6))
 
   // Distribution by emoji (count of distinct days each feeling was logged).
   const distribution = useMemo(() => {
@@ -104,45 +115,64 @@ export default function InsightsPage() {
     : null
   const checkinDays = new Set(filtered.map((l) => new Date(l.created_at).toDateString())).size
 
-  // Best day = day with the highest average mood.
-  const bestDay = timeline.length
-    ? timeline.reduce((best, t) => (t.avg > best.avg ? t : best), timeline[0])
+  // Best day = logged day with the highest average mood.
+  const loggedDays = useMemo(() => timeline.filter((t): t is { day: Date; avg: number } => t.avg !== null), [timeline])
+  const bestDay = loggedDays.length
+    ? loggedDays.reduce((best, t) => (t.avg > best.avg ? t : best), loggedDays[0])
     : null
 
   // Trend takeaway: compare the last 3 logged days to the previous 3.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const takeaway = useMemo(() => {
-    if (timeline.length < 2) return null
-    const recent = timeline.slice(-3)
-    const older = timeline.slice(-6, -3)
+    if (loggedDays.length < 2) return null
+    const recent = loggedDays.slice(-3)
+    const older = loggedDays.slice(-6, -3)
     if (older.length === 0) return null
     const recentAvg = recent.reduce((s, t) => s + t.avg, 0) / recent.length
     const olderAvg = older.reduce((s, t) => s + t.avg, 0) / older.length
     if (recentAvg > olderAvg + 0.2) return 'Your mood has been steadily improving over the recent check-ins. Keep going gently.'
     if (recentAvg < olderAvg - 0.2) return 'The last few days feel heavier than before. That is okay — notice it without judgment.'
     return 'Your mood has held steady across recent check-ins. Consistency itself is a win.'
-  }, [timeline])
+  }, [loggedDays])
 
   return (
     <>
       <AppNav title="Insights" />
-      <div className="page-enter space-y-8 pb-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="font-heading text-[32px] font-bold text-plum">Wellbeing Insights</h1>
-            <p className="mt-1 text-sm text-charcoal">Non-diagnostic patterns and trends from your head space reflections.</p>
+      <div className="page-enter space-y-6 pb-8">
+        {/* ── Hero with header background ─────────────────────── */}
+        <section className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/insights-header.png"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="relative px-6 py-7 sm:px-8">
+            <h1 className="font-display text-[40px] font-bold leading-[1.1] sm:text-[46px]">
+              <span className="block text-[#2A1B3D]">Wellbeing</span>
+              <span className="block bg-gradient-to-r from-[#C45D3E] via-[#C98BB8] to-[#6B4A80] bg-clip-text text-transparent">Insights</span>
+            </h1>
+            <p className="mt-3 max-w-sm text-[15px] leading-6 text-charcoal/80">
+              Non-diagnostic patterns and trends from your head space reflections.
+            </p>
+            <div className="mt-5 flex items-center gap-2.5">
+              {RANGES.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => setTarget(r.key)}
+                  className={
+                    target === r.key
+                      ? 'rounded-full bg-gradient-to-r from-[#5B4B9E] to-[#A8546B] px-6 py-2.5 text-[14px] font-bold text-white shadow-[0_4px_14px_rgba(91,75,158,0.3)]'
+                      : 'rounded-full bg-white/90 px-6 py-2.5 text-[14px] font-bold text-charcoal shadow-[0_2px_10px_rgba(74,44,94,0.08)] backdrop-blur-sm transition-transform hover:-translate-y-0.5'
+                  }
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {RANGES.map((r) => (
-              <button
-                key={r.key}
-                onClick={() => setTarget(r.key)}
-                className={target === r.key ? 'rounded-full bg-plum px-4 py-2 text-[13px] font-bold text-white' : 'rounded-full border border-warm-gray-lighter px-4 py-2 text-[13px] font-bold text-plum'}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        </section>
 
         {loading ? (
           <div className="space-y-4">
@@ -151,93 +181,141 @@ export default function InsightsPage() {
           </div>
         ) : (
           <>
-            {/* Timeline */}
-            <div className="rounded-[20px] border border-warm-gray-lighter bg-white p-7">
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="font-heading text-lg font-bold text-plum">
-                  Your head space timeline (last {Math.max(timeline.length, 1)} check-in day{timeline.length === 1 ? '' : 's'})
-                </h2>
-                <span className="flex items-center gap-1.5 text-xs text-warm-gray">
-                  <TrendingUp size={12} /> Mood level
-                </span>
-              </div>
-              {timeline.length === 0 ? (
-                <p className="py-10 text-center text-sm text-warm-gray">
-                  No check-ins in this range yet. Log a mood from the dashboard and your timeline will appear here.
-                </p>
-              ) : (
-                <>
-                  <div className="flex h-36 items-end gap-2 sm:gap-3">
-                    {timeline.map((t) => (
-                      <div key={t.day.toISOString()} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                        <span className="text-[11px] text-warm-gray">{t.avg.toFixed(1)}</span>
-                        <div
-                          className={`w-full max-w-[40px] rounded-t-lg ${BAR_COLORS['😌']}`}
-                          style={{ height: `${Math.max(8, (t.avg / 5) * 100)}%`, backgroundColor: t.avg >= 4 ? '#7B9E6B' : t.avg >= 3 ? '#6B4A80' : '#C45D3E' }}
-                          title={formatDefaultDate(t.day)}
-                        />
-                        <span className="w-full truncate text-center text-[10px] text-[#80698A]">
-                          {formatShortDate(t.day)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mb-5 mt-4 h-px bg-warm-gray-lighter" />
-                  {takeaway && (
-                    <p className="text-sm text-charcoal">
-                      <span className="font-bold text-plum">Takeaway: </span>
-                      {takeaway}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="grid items-start gap-6 lg:grid-cols-2">
-              {/* Mood distribution */}
-              <div className="rounded-[20px] border border-warm-gray-lighter bg-white p-7">
-                <h2 className="mb-5 font-heading text-lg font-bold text-plum">Mood distribution</h2>
-                {distribution.length === 0 ? (
-                  <p className="py-6 text-sm text-warm-gray">No data in this range yet.</p>
+            {/* Timeline — mood line chart */}
+            <div className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter bg-white shadow-[0px_4px_16px_#4A2C5E08]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/insights-chart-bg.png"
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-70"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-white/60" aria-hidden="true" />
+              <div className="relative p-5 sm:p-7">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-heading text-[22px] font-bold text-[#4A2C6E]">Your head space timeline</h2>
+                  <span className="flex items-center gap-3 text-[12px] font-semibold text-charcoal/70">
+                    <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-sage" /> Good</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-plum-light" /> Okay</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-terracotta" /> Heavy</span>
+                  </span>
+                </div>
+                {timeline.every((t) => t.avg === null) ? (
+                  <p className="py-10 text-center text-sm text-warm-gray">
+                    No check-ins in this range yet. Log a mood from the dashboard and your timeline will appear here.
+                  </p>
                 ) : (
-                  <div className="space-y-3.5">
-                    {distribution.map((d) => (
-                      <div key={d.label} className="flex items-center gap-4">
-                        <span className="w-24 shrink-0 text-[13px] font-bold text-charcoal">{d.label}</span>
-                        <div className="h-2 flex-1 rounded bg-cream-dark">
-                          <div className={`h-2 rounded ${BAR_COLORS[d.emoji] ?? 'bg-plum'}`} style={{ width: `${(d.days / maxDistDays) * 100}%` }} />
-                        </div>
-                        <span className="w-16 shrink-0 text-right text-[13px] text-[#80698A]">{d.days} day{d.days === 1 ? '' : 's'}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <>
+                    <MoodLineChart data={timeline} height={isMobile ? 200 : 280} labelEvery={labelEvery} />
+                    <div className="mb-5 mt-4 h-px bg-warm-gray-lighter" />
+                    {takeaway && (
+                      <p className="text-sm leading-6 text-charcoal">
+                        <span className="font-bold text-plum">Takeaway: </span>
+                        {takeaway}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
+            </div>
 
-              {/* Reflection metrics */}
-              <div className="rounded-[20px] border border-warm-gray-lighter bg-white p-7">
-                <h2 className="mb-5 font-heading text-lg font-bold text-plum">Your reflection metrics</h2>
+            <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-6">
+              {/* Mood distribution */}
+              <div className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter bg-white shadow-[0px_4px_16px_#4A2C5E08]">
+                {/* soft waves + leaves background */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/insights-dist-bg.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-white/40" aria-hidden="true" />
+                <div className="relative p-5 sm:p-7">
+                  <div className="mb-6 flex items-start justify-between">
+                    <div>
+                      <h2 className="font-heading text-[22px] font-bold text-[#4A2C6E]">Mood distribution</h2>
+                      <p className="mt-1 text-[13px] text-warm-gray">How you&apos;ve been feeling this week</p>
+                    </div>
+                  </div>
+                  {distribution.length === 0 ? (
+                    <p className="py-6 text-sm text-warm-gray">No data in this range yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {distribution.map((d) => (
+                        <div key={d.label} className="flex items-center gap-4">
+                          <span className="flex w-24 shrink-0 items-center gap-2 text-[15px] font-semibold text-charcoal">
+                            <NotoEmoji emoji={d.emoji} size={22} />
+                            {d.label}
+                          </span>
+                          <div className="h-2.5 flex-1 rounded-full bg-[#EFE6DC]">
+                            <div className={`h-2.5 rounded-full ${BAR_COLORS[d.emoji] ?? 'bg-plum'}`} style={{ width: `${(d.days / maxDistDays) * 100}%` }} />
+                          </div>
+                          <span className="w-16 shrink-0 text-right text-[14px] font-bold text-[#80698A]">{d.days} day{d.days === 1 ? '' : 's'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Reflection metrics — themed stat rows */}
+              <div className="rounded-[24px] border border-warm-gray-lighter bg-white p-5 shadow-[0px_4px_16px_#4A2C5E08] sm:p-7">
+                <div className="mb-5">
+                  <h2 className="font-heading text-[22px] font-bold">
+                    <span className="text-[#4A2C6E]">Your reflection </span>
+                    <span className="text-[#C4506B]">metrics</span>
+                  </h2>
+                  <p className="mt-1 text-[13px] text-warm-gray">A quick snapshot from your entries.</p>
+                </div>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-3">
-                    <span className="text-sm text-charcoal">Average Mood</span>
-                    <span className="text-sm font-bold text-plum">{avgEmoji ? `${avgEmoji.label} ${avgEmoji.emoji}` : '—'}</span>
+                  {/* Average Mood — purple */}
+                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#F3EFFB] to-[#EFEAFB] p-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/insights-stat-purple.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
+                    <div className="relative flex items-center gap-3.5">
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#E4DBF7] text-xl"><NotoEmoji emoji="🧠" size={24} /></span>
+                      <span className="flex-1 text-[15px] font-semibold text-charcoal">Average Mood</span>
+                      <span className="flex items-center gap-1.5 rounded-full bg-white/70 px-4 py-1.5 text-[14px] font-bold text-[#5B3E8E]">
+                        {avgEmoji ? <><NotoEmoji emoji={avgEmoji.emoji} size={16} /> {avgEmoji.label}</> : '—'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-px bg-warm-gray-lighter" />
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-charcoal">Best Day</span>
-                    <span className="text-sm font-bold text-plum">
-                      {bestDay ? formatWeekday(bestDay.day) : '—'}
-                    </span>
+                  {/* Best Day — blue */}
+                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#EAF1FB] to-[#E7EEFA] p-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/insights-stat-blue.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
+                    <div className="relative flex items-center gap-3.5">
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#D9E5F9] text-xl"><NotoEmoji emoji="📅" size={24} /></span>
+                      <span className="flex-1 text-[15px] font-semibold text-charcoal">Best Day</span>
+                      <span className="rounded-full bg-white/70 px-4 py-1.5 text-[14px] font-bold text-[#3E5FA8]">
+                        {bestDay ? formatWeekday(bestDay.day) : '—'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-px bg-warm-gray-lighter" />
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-charcoal">Check-in Days</span>
-                    <span className="text-sm font-bold text-plum">{checkinDays} day{checkinDays === 1 ? '' : 's'} 🔥</span>
+                  {/* Check-in Days — peach */}
+                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#FBEDE7] to-[#FAE9E4] p-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/insights-stat-peach.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
+                    <div className="relative flex items-center gap-3.5">
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F8DCCF] text-xl"><NotoEmoji emoji="🔥" size={24} /></span>
+                      <span className="flex-1 text-[15px] font-semibold text-charcoal">Check-in Days</span>
+                      <span className="flex items-center gap-1.5 rounded-full bg-white/70 px-4 py-1.5 text-[14px] font-bold text-[#B5472F]">
+                        {checkinDays} day{checkinDays === 1 ? '' : 's'} <NotoEmoji emoji="🔥" size={15} />
+                      </span>
+                    </div>
                   </div>
-                  <div className="h-px bg-warm-gray-lighter" />
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-charcoal">Total Check-ins</span>
-                    <span className="text-sm font-bold text-plum">{filtered.length}</span>
+                  {/* Total Check-ins — green */}
+                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#E9F5EB] to-[#E6F4E9] p-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/insights-stat-green.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
+                    <div className="relative flex items-center gap-3.5">
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#CFEBD6] text-xl"><NotoEmoji emoji="📊" size={24} /></span>
+                      <span className="flex-1 text-[15px] font-semibold text-charcoal">Total Check-ins</span>
+                      <span className="rounded-full bg-white/70 px-4 py-1.5 text-[14px] font-bold text-[#2E7D4F]">
+                        {filtered.length}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -246,5 +324,128 @@ export default function InsightsPage() {
         )}
       </div>
     </>
+  )
+}
+
+/** Colors for a mood average: sage (good) → plum (okay) → terracotta (heavy). */
+function moodColor(avg: number) {
+  if (avg >= 4) return '#7B9E6B'
+  if (avg >= 3) return '#6B4A80'
+  return '#C45D3E'
+}
+
+/**
+ * SVG line chart of daily mood averages. Gaps (no check-in) are spanned by
+ * the line but not filled; dots + value labels mark real check-in days.
+ */
+function MoodLineChart({
+  data,
+  height,
+  labelEvery,
+}: {
+  data: { day: Date; avg: number | null }[]
+  height: number
+  labelEvery: number
+}) {
+  const W = 720
+  const H = height
+  const PAD = { top: 30, right: 18, bottom: 30, left: 34 }
+  const iw = W - PAD.left - PAD.right
+  const ih = H - PAD.top - PAD.bottom
+
+  const x = (i: number) => PAD.left + (data.length <= 1 ? iw / 2 : (i / (data.length - 1)) * iw)
+  const y = (v: number) => PAD.top + ih - ((v - 1) / 4) * ih // score 1..5
+
+  const points = data
+    .map((t, i) => ({ ...t, i, x: x(i), y: t.avg !== null ? y(t.avg) : null }))
+  type RealPoint = { day: Date; avg: number; i: number; x: number; y: number }
+  const real = points.filter((p): p is RealPoint => p.y !== null && p.avg !== null)
+
+  // Smooth curve through real points using Catmull-Rom → cubic Bézier.
+  // (Plain computation — the chart re-renders only when data changes, so
+  // memoization is unnecessary and React Compiler dislikes `real` deps.)
+  const linePath = (() => {
+    if (real.length === 0) return ''
+    if (real.length === 1) return `M${real[0].x.toFixed(1)},${real[0].y.toFixed(1)}`
+    let d = `M${real[0].x.toFixed(1)},${real[0].y.toFixed(1)}`
+    for (let i = 0; i < real.length - 1; i++) {
+      const p0 = real[Math.max(0, i - 1)]
+      const p1 = real[i]
+      const p2 = real[i + 1]
+      const p3 = real[Math.min(real.length - 1, i + 2)]
+      const c1x = p1.x + (p2.x - p0.x) / 6
+      const c1y = p1.y + (p2.y - p0.y) / 6
+      const c2x = p2.x - (p3.x - p1.x) / 6
+      const c2y = p2.y - (p3.y - p1.y) / 6
+      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`
+    }
+    return d
+  })()
+  // Area under the curved line down to baseline (score 1).
+  const areaPath =
+    real.length > 1
+      ? `${linePath} L${real[real.length - 1].x.toFixed(1)},${(PAD.top + ih).toFixed(1)} L${real[0].x.toFixed(1)},${(PAD.top + ih).toFixed(1)} Z`
+      : ''
+
+  const gridLines = [1, 2, 3, 4, 5]
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Mood timeline chart">
+      {/* Grid + y-axis labels */}
+      {gridLines.map((v) => (
+        <g key={v}>
+          <line
+            x1={PAD.left}
+            x2={W - PAD.right}
+            y1={y(v)}
+            y2={y(v)}
+            stroke="#E8E0D8"
+            strokeWidth={1}
+            strokeDasharray={v === 3 ? '0' : '3 4'}
+          />
+          <text x={PAD.left - 8} y={y(v) + 3.5} textAnchor="end" fontSize={9.5} fill="#B0B0B0">
+            {v}
+          </text>
+        </g>
+      ))}
+
+      {/* Area fill */}
+      {areaPath && <path d={areaPath} fill="url(#moodGrad)" opacity={0.35} />}
+      <defs>
+        <linearGradient id="moodGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#6B4A80" stopOpacity={0.5} />
+          <stop offset="100%" stopColor="#6B4A80" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+
+      {/* Line */}
+      {real.length > 1 && <path d={linePath} fill="none" stroke="#6B4A80" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
+
+      {/* Dots + value labels on real check-in days */}
+      {real.map((p) => (
+        <g key={p.day.toISOString()}>
+          <circle cx={p.x} cy={p.y} r={4.5} fill={moodColor(p.avg)} stroke="#fff" strokeWidth={2} />
+          <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize={9.5} fontWeight={600} fill={moodColor(p.avg)}>
+            {p.avg.toFixed(1)}
+          </text>
+        </g>
+      ))}
+
+      {/* X-axis date labels, evenly thinned */}
+      {points.map((p, i) =>
+        i % labelEvery === 0 || i === points.length - 1 ? (
+          <text
+            key={`lbl-${p.day.toISOString()}`}
+            x={p.x}
+            y={H - 8}
+            textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}
+            fontSize={9.5}
+            fill="#80698A"
+          >
+            {formatShortDate(p.day)}
+          </text>
+        ) : null,
+      )}
+    </svg>
   )
 }

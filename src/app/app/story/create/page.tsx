@@ -2,10 +2,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppNav } from '../../../../components/layout/AppNavContext'
-import { ImagePlus, Loader2, Sparkles } from 'lucide-react'
+import { ImagePlus, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-
-const MOOD_OPTIONS = ['😊', '😌', '😐', '😤', '😰', '😔']
+import { MOOD_EMOJIS } from '@/lib/constants'
 
 export default function CreateStoryPage() {
   const router = useRouter()
@@ -99,28 +98,32 @@ export default function CreateStoryPage() {
             <p role="alert" className="mb-4 rounded-xl bg-charcoal/60 px-4 py-3 text-sm text-cream">{error}</p>
           )}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-cream/20 pt-4">
-            <div className="flex items-center gap-2">
-              <label className="cursor-pointer rounded-full bg-cream/15 p-3" aria-label="Attach a photo">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="cursor-pointer rounded-full bg-cream/15 p-3 transition-colors hover:bg-cream/25" aria-label="Attach a photo">
                 <ImagePlus size={18} />
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
               </label>
-              <div className="flex items-center gap-1 rounded-full bg-cream/15 px-2 py-1.5">
-                {MOOD_OPTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => setMood(mood === emoji ? null : emoji)}
-                    aria-label={`Mood ${emoji}`}
-                    aria-pressed={mood === emoji}
-                    className={`rounded-full p-1 text-lg transition-transform ${mood === emoji ? 'scale-125 bg-cream/25' : 'opacity-60 hover:opacity-100'}`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center gap-1 rounded-full bg-cream/15 px-2 py-1.5" role="group" aria-label="How do you feel?">
+                {MOOD_EMOJIS.map((m) => {
+                  const isSelected = mood === m.emoji
+                  return (
+                    <button
+                      key={m.label}
+                      type="button"
+                      onClick={() => setMood(isSelected ? null : m.emoji)}
+                      aria-label={m.label}
+                      aria-pressed={isSelected}
+                      title={m.label}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95 ${
+                        isSelected ? 'scale-110 bg-cream/30 ring-2 ring-cream' : 'opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={m.image} alt="" draggable={false} className="h-6 w-6 select-none" />
+                    </button>
+                  )
+                })}
               </div>
-              <button type="button" className="rounded-full bg-cream/15 p-3" aria-label="Add sparkle">
-                <Sparkles size={18} />
-              </button>
             </div>
             <button
               onClick={handleShare}
@@ -133,7 +136,7 @@ export default function CreateStoryPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-warm-gray">🔒 Stories are anonymous, seen by the community, and expire after 48 hours.</p>
+        <p className="text-center text-xs text-warm-gray">🔒 Stories are anonymous, seen by the community, and disappear after 24 hours.</p>
       </div>
     </>
   )

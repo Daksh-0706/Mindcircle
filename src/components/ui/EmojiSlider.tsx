@@ -5,6 +5,8 @@ import { cn } from '../../lib/utils'
 
 export interface EmojiOption {
   emoji: string
+  /** Optional Noto PNG path — rendered as an image when present. */
+  image?: string
   label: string
   color: string
 }
@@ -52,7 +54,12 @@ export default function EmojiSlider({ emojis, selected, onSelect, className }: E
                 animate={{ scale: isSelected ? 1.15 : 1 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               >
-                {item.emoji}
+                {item.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.image} alt="" draggable={false} className="h-10 w-10 select-none sm:h-12 sm:w-12" />
+                ) : (
+                  item.emoji
+                )}
               </motion.span>
 
               <span

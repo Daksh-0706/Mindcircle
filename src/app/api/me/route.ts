@@ -30,6 +30,7 @@ export async function GET() {
       id: user.id,
       email: user.email,
       createdAt: user.created_at,
+      fullName: typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null,
     },
     profile,
   })

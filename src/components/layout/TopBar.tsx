@@ -1,8 +1,9 @@
 'use client'
 
-import { Search, Bell, ChevronDown, LogOut, User, Settings } from 'lucide-react'
+import { Search, ChevronDown, LogOut, User, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '../../lib/utils'
+import { NotificationBell } from './NotificationBell'
 
 interface TopBarProps {
   title: string
@@ -45,30 +46,19 @@ export function TopBar({
         <div className="flex items-center gap-4 flex-1 justify-end">
           {/* Search */}
           <form onSubmit={handleSearch} className="relative w-full max-w-md hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray size-5" aria-hidden="true" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-warm-gray size-5" aria-hidden="true" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search..."
-              className="input-warm w-full pl-10 pr-4"
+              className="input-warm w-full pl-11"
               aria-label="Search"
             />
           </form>
 
           {/* Notifications */}
-          <button
-            type="button"
-            onClick={onNotifications}
-            aria-label="Notifications"
-            className={cn(
-              'relative flex h-10 w-10 items-center justify-center rounded-full text-charcoal transition-colors',
-              'hover:bg-plum/5 active:bg-plum/10'
-            )}
-          >
-            <Bell size={22} />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-terracotta ring-2 ring-white" />
-          </button>
+          <NotificationBell />
 
           {/* User dropdown */}
           <div className="relative">
