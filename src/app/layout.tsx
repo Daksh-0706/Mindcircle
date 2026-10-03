@@ -62,9 +62,9 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       // src/app/favicon.ico and src/app/apple-icon.png are picked up
-      // automatically by the App Router; these fill in the SVG and PWA sizes.
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico', sizes: '256x256' },
+      // automatically by the App Router; these fill in the PWA sizes.
+      { url: '/favicon.ico', sizes: '48x48' },
+      { url: '/favicon.ico', sizes: '32x32' },
       { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
       { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
     ],

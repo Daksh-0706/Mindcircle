@@ -2,13 +2,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
   ArrowLeft,
-  Heart,
   Mail,
   MapPin,
   Phone,
   ShieldCheck,
 } from 'lucide-react'
 import { CONTACT, SITE_URL, OG_IMAGE_PATH } from '@/lib/seo'
+import { Logo } from '@/components/common/Logo'
 
 export const metadata: Metadata = {
   title: 'Terms & Conditions',
@@ -57,12 +57,7 @@ export default function TermsPage() {
             href="/landing"
             className="flex items-center gap-2 text-charcoal hover:text-plum transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-plum to-terracotta flex items-center justify-center">
-              <Heart className="w-4 h-4 text-cream" aria-hidden="true" />
-            </div>
-            <span className="font-heading font-bold gradient-text">
-              MindCircle
-            </span>
+            <Logo height={30} withWordmark />
           </Link>
           <Link
             href="/landing"

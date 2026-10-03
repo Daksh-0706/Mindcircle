@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { SIDEBAR_ITEMS } from '../../lib/constants'
 import { cn } from '../../lib/utils'
+import { Logo } from '../common/Logo'
 
 const ICONS: Record<string, LucideIcon> = {
   Home,
@@ -83,7 +84,7 @@ export function SideNav({
       {/* Brand */}
       <div className="relative shrink-0 px-6 pb-2 pt-6">
         <Link href="/app" onClick={onNavigate} className="block">
-          <span className="font-heading text-2xl font-bold gradient-text">MindCircle</span>
+          <Logo height={34} withWordmark />
         </Link>
         <p className="mt-0.5 text-xs text-warm-gray">A calmer, brighter you</p>
       </div>

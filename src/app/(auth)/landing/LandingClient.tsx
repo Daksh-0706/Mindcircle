@@ -22,6 +22,7 @@ import {
 import { FEATURES, TESTIMONIALS } from '../../../lib/constants'
 import { StickyMobileCta } from '@/components/common/StickyMobileCta'
 import { CONTACT } from '@/lib/seo'
+import { Logo } from '../../../components/common/Logo'
 
 /* ── Helpers ──────────────────────────────────────────────── */
 
@@ -95,12 +96,8 @@ function Navbar() {
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link href="/landing" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-plum to-terracotta flex items-center justify-center">
-              <Heart className="w-4 h-4 text-cream" />
-            </div>
-            <span className="font-heading text-xl font-bold gradient-text">
-              MindCircle
-            </span>
+            <Logo height={32} withWordmark />
+            
           </Link>
 
           {/* Desktop nav links */}
@@ -245,9 +242,7 @@ function HeroSection() {
               </div>
               {/* Center icon */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-plum to-terracotta flex items-center justify-center shadow-strong">
-                  <Heart className="w-10 h-10 text-cream" />
-                </div>
+                <Logo height={80} />
               </div>
               {/* Floating mini elements */}
               <motion.div
@@ -522,12 +517,8 @@ function Footer() {
           {/* Brand column */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-terracotta to-sage flex items-center justify-center">
-                <Heart className="w-4 h-4 text-cream" />
-              </div>
-              <span className="font-heading text-xl font-bold text-cream">
-                MindCircle
-              </span>
+              <Logo height={32} withWordmark />
+              
             </div>
             <p className="text-sm leading-relaxed text-cream/60 max-w-xs">
               A privacy-first mental health platform designed for students and

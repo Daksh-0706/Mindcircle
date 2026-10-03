@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, ArrowRight, ChevronRight } from 'lucide-react'
+import { ArrowRight, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import NotoEmoji from '../../../components/ui/NotoEmoji'
+import { Logo } from '../../../components/common/Logo'
 
 const pageTransition = {
   initial: { opacity: 0, y: 12 },
@@ -231,12 +232,8 @@ export default function OnboardingPage() {
 
         {/* Branding */}
         <div className="flex items-center justify-center gap-2 mt-6">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-plum to-terracotta flex items-center justify-center">
-            <Heart className="w-2.5 h-2.5 text-cream" />
-          </div>
-          <span className="font-heading text-xs text-warm-gray">
-            MindCircle
-          </span>
+          <Logo height={20} withWordmark />
+          
         </div>
       </div>
     </motion.div>

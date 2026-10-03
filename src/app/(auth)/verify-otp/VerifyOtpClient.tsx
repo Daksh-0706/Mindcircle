@@ -4,10 +4,11 @@ import { useState, useRef, useCallback, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Heart, CheckCircle2, Loader2, Mail } from 'lucide-react'
+import { CheckCircle2, Loader2, Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { authErrorMessage } from '@/lib/auth-errors'
 import { useSearchParams } from 'next/navigation'
+import { Logo } from '@/components/common/Logo'
 
 const supabase = createClient()
 
@@ -187,10 +188,7 @@ function VerifyOtpForm() {
           {/* Brand + secure badge */}
           <div className="flex items-center justify-between mb-12">
             <Link href="/landing" className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-gradient-to-br from-plum to-terracotta">
-                <Heart className="h-4 w-4 text-cream" />
-              </span>
-              <span className="font-heading text-[22px] font-bold text-plum">MindCircle</span>
+              <Logo height={30} />
             </Link>
             <span className="flex items-center gap-1.5 rounded-full bg-cream-dark px-3 py-1.5 text-xs font-bold text-sage-dark">
               <Mail size={12} /> Secure Loop
@@ -296,9 +294,8 @@ function VerifyOtpForm() {
         <div className="relative">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-cream/15">
-              <Heart className="h-4 w-4 text-cream" />
             </span>
-            <span className="font-heading text-[22px] font-bold text-cream">MindCircle</span>
+            <Logo height={30} variant="light" />
           </div>
           <h2 className="mt-14 max-w-sm font-heading text-[38px] font-bold leading-tight text-cream">
             Your campus sanctuary is one step away.

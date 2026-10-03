@@ -4,9 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Heart, Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { authErrorMessage } from '@/lib/auth-errors'
+import { Logo } from '../../../components/common/Logo'
+import { AuthArt, AuthQuote, Flourish } from '../../../components/auth/AuthArt'
 
 const supabase = createClient()
 
@@ -114,16 +116,15 @@ export default function SignupPage() {
         <div className="w-full max-w-md">
           {/* Logo */}
           <Link href="/landing" className="flex items-center gap-2 mb-10">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-plum to-terracotta flex items-center justify-center">
-              <Heart className="w-4 h-4 text-cream" />
-            </div>
-            <span className="font-heading text-xl font-bold gradient-text">
-              MindCircle
-            </span>
+            <Logo height={32} withWordmark />
+            
           </Link>
 
-          <h1 className="font-heading text-3xl font-bold text-charcoal mb-2">
-            Create your account
+          <h1 className="flex items-center gap-2 mb-2">
+            <span className="font-display text-3xl sm:text-4xl font-bold text-charcoal">
+              Create your <span className="gradient-text">account</span>
+            </span>
+            <Flourish className="w-6 h-5 text-terracotta/70 shrink-0" />
           </h1>
           <p className="text-warm-gray mb-8">
             Start your mental wellness journey today.
@@ -251,41 +252,20 @@ export default function SignupPage() {
         </div>
       </div>
 
-      {/* ── Right: Illustration (desktop) ───────────────────── */}
-      <div className="hidden lg:flex flex-1 mesh-gradient items-center justify-center relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-20 right-20 w-32 h-32 rounded-full bg-sage/10 blob-shape" />
-        <div className="absolute bottom-20 left-20 w-40 h-40 rounded-full bg-terracotta/10 blob-shape" />
-        <div className="absolute top-1/2 right-1/3 w-24 h-24 rounded-full bg-plum/10 blob-shape" />
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="relative z-10 max-w-sm text-center px-8"
-        >
-          {/* Decorative circle cluster */}
-          <div className="relative w-48 h-48 mx-auto mb-10">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-40 h-40 rounded-full bg-gradient-to-br from-plum/15 to-terracotta/15 animate-[spin_20s_linear_infinite]" />
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-sage/20 to-plum/20 blob-shape" />
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-plum to-terracotta flex items-center justify-center shadow-strong">
-                <Heart className="w-7 h-7 text-cream" />
-              </div>
-            </div>
-          </div>
-
-          <blockquote className="font-heading text-xl font-medium text-charcoal italic leading-relaxed">
-            &ldquo;The greatest glory in living lies not in never falling, but in
-            rising every time we fall.&rdquo;
-          </blockquote>
-          <p className="text-sm text-warm-gray mt-4">-- Nelson Mandela</p>
-        </motion.div>
+      {/* ── Right: artwork + quote (desktop) ──────────────── */}
+      <div className="relative hidden lg:flex w-1/2 shrink-0">
+        <div className="absolute inset-y-0 left-0 w-px bg-plum/10" />
+        <AuthArt accent="plum" />
+        <div className="relative z-10 mt-auto w-full px-10 pb-24">
+          <AuthQuote author="Nelson Mandela">
+            The greatest glory in living lies not in never falling, but in{' '}
+            <strong className="gradient-text font-semibold not-italic">
+              rising every time we fall.
+            </strong>
+          </AuthQuote>
+        </div>
       </div>
+
     </motion.div>
     </>
   )
