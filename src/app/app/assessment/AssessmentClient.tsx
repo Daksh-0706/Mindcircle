@@ -2,9 +2,25 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppNav } from '../../../components/layout/AppNavContext'
+import { EnergySlider } from '../../../components/ui/EnergySlider'
+import { SupportSelect } from '../../../components/ui/SupportSelect'
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react'
 
-const SUPPORT_OPTIONS = ['A quiet moment', 'Someone to talk to', 'Professional support']
+/**
+ * What someone might need in the moment. Deliberately concrete and
+ * low-commitment — most of these are things they can do right now without
+ * talking to anyone, and professional support is one option rather than the
+ * loudest one.
+ */
+const SUPPORT_OPTIONS = [
+  'A quiet moment',
+  'A gentle walk outside',
+  'Music or something creative',
+  'Someone to talk to',
+  'Time with someone I trust',
+  'Just to vent — no advice needed',
+  'Professional support',
+]
 
 export default function AssessmentPage() {
   const router = useRouter()
@@ -66,29 +82,21 @@ export default function AssessmentPage() {
                 A few gentle questions can help you notice what you need today. There are no wrong answers.
               </p>
               <div className="mt-8 space-y-5 text-left">
-                <label className="block text-sm font-medium">
-                  How much energy do you have today? <span className="text-warm-gray">({energy}/10)</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={10}
-                    value={energy}
-                    onChange={(e) => setEnergy(Number(e.target.value))}
-                    className="mt-4 w-full accent-plum"
-                  />
-                </label>
-                <label className="block text-sm font-medium">
-                  What would support you right now?
-                  <select
+                <div className="block text-sm font-medium">
+                  How much energy do you have today?{' '}
+                  <span className="text-warm-gray">({energy}/10)</span>
+                  <EnergySlider value={energy} onChange={setEnergy} className="mt-3" />
+                </div>
+                <div className="block text-sm font-medium">
+                  <label htmlFor="support">What would support you right now?</label>
+                  <SupportSelect
+                    id="support"
+                    options={SUPPORT_OPTIONS}
                     value={support}
-                    onChange={(e) => setSupport(e.target.value)}
-                    className="input-warm mt-3 w-full"
-                  >
-                    {SUPPORT_OPTIONS.map((option) => (
-                      <option key={option}>{option}</option>
-                    ))}
-                  </select>
-                </label>
+                    onChange={setSupport}
+                    className="mt-3"
+                  />
+                </div>
               </div>
               {error && (
                 <p role="alert" className="mt-4 rounded-xl bg-danger/10 px-4 py-3 text-left text-sm text-danger">{error}</p>

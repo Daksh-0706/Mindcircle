@@ -54,13 +54,13 @@ export default function TermsPage() {
       <header className="sticky top-0 z-30 glass-card border-b border-plum/10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link
-            href="/landing"
+            href="/"
             className="flex items-center gap-2 text-charcoal hover:text-plum transition-colors"
           >
             <Logo height={30} withWordmark />
           </Link>
           <Link
-            href="/landing"
+            href="/"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-charcoal/70 hover:text-plum transition-colors"
           >
             <ArrowLeft className="w-4 h-4" aria-hidden="true" />

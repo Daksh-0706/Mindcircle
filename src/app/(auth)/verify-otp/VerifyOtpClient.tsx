@@ -187,7 +187,7 @@ function VerifyOtpForm() {
         <div className="w-full max-w-[420px]">
           {/* Brand + secure badge */}
           <div className="flex items-center justify-between mb-12">
-            <Link href="/landing" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <Logo height={30} />
             </Link>
             <span className="flex items-center gap-1.5 rounded-full bg-cream-dark px-3 py-1.5 text-xs font-bold text-sage-dark">

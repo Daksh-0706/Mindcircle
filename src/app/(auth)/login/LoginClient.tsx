@@ -118,7 +118,7 @@ function LoginForm() {
       <div className="flex-1 flex items-center justify-center px-4 sm:px-8 py-12">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <Link href="/landing" className="flex items-center gap-2 mb-10">
+          <Link href="/" className="flex items-center gap-2 mb-10">
             <Logo height={32} withWordmark />
             
           </Link>

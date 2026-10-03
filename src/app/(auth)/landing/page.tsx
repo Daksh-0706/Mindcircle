@@ -1,34 +1,11 @@
-import type { Metadata } from 'next'
-import LandingClient from './LandingClient'
-import { DEFAULT_DESCRIPTION, OG_IMAGE_PATH, SITE_URL } from '@/lib/seo'
+import { permanentRedirect } from 'next/navigation'
 
 /**
- * The landing page is the site's canonical URL, so it opts out of the root
- * layout's `%s | MindCircle` title template — otherwise the title renders as
- * "MindCircle — Your Safe Space | MindCircle".
+ * `/landing` used to be the landing page. The canonical URL is now the site
+ * root, so this only exists as a permanent redirect — anything that still
+ * links here (old bookmarks, shared links, search results) lands on `/`
+ * without a second URL competing for the same content in search results.
  */
-export const metadata: Metadata = {
-  title: {
-    absolute: 'MindCircle — Your Safe Space',
-  },
-  description: DEFAULT_DESCRIPTION,
-  alternates: { canonical: '/' },
-  openGraph: {
-    title: 'MindCircle — Your Safe Space',
-    description: DEFAULT_DESCRIPTION,
-    url: SITE_URL,
-    images: [{ url: OG_IMAGE_PATH, width: 1200, height: 630, alt: 'MindCircle — Your Safe Space' }],
-  },
-  robots: { index: true, follow: true },
-}
-
-/**
- * Server shell for the LandingClient.
- *
- * All of the UI lives in the colocated client component; this file exists so
- * the route can export real `metadata`, which is rendered into the HTML for
- * crawlers that never execute JavaScript.
- */
-export default function Page() {
-  return <LandingClient />
+export default function LandingRedirect() {
+  permanentRedirect('/')
 }

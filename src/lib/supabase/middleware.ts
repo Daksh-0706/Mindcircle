@@ -56,6 +56,9 @@ export async function updateSession(request: NextRequest) {
   // Onboarding is part of the signed-in journey, not the public one: it reads
   // the session to prefill the name and provision the profile row.
   const isOnboarding = pathname.startsWith('/onboarding')
+  // `/landing` is a redirect to `/` but is listed here too, so a signed-in
+  // visitor following an old link is sent on to the app instead of bouncing
+  // through the redirect first.
   const isAuthLanding =
     pathname === '/' ||
     pathname.startsWith('/login') ||

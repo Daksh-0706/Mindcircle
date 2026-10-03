@@ -52,7 +52,7 @@ export const PUBLIC_ROUTES: {
   changeFrequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
 }[] = [
   {
-    path: '/landing',
+    path: '/',
     title: 'MindCircle — Your Safe Space',
     description: DEFAULT_DESCRIPTION,
     priority: 1,
