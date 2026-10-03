@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# brand font cache for scripts/generate-icons.py (downloaded on demand)
+/.brandfonts
+
+# local image previews
+/.preview
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

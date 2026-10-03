@@ -381,7 +381,7 @@ export default function TermsPage() {
               </h2>
               <p className="mt-3">
                 These terms are governed by the laws of India, and the courts of
-                Bengaluru, Karnataka have exclusive jurisdiction, without
+                Uttar Pradesh have exclusive jurisdiction, without
                 affecting any mandatory consumer protections available to you
                 where you live. If a provision is found unenforceable, the rest
                 of these terms remain in force.

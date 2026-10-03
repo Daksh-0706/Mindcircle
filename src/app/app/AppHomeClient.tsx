@@ -7,6 +7,8 @@ import {
   BookOpen,
   Check,
   ChevronRight,
+  Sparkles,
+  X,
 } from 'lucide-react'
 import { AppNav } from '../../components/layout/AppNavContext'
 import Skeleton from '../../components/ui/Skeleton'
@@ -62,6 +64,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [now] = useState(() => new Date())
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
+  /** True until the 4-step setup is finished, so we can nudge about it. */
+  const [needsSetup, setNeedsSetup] = useState(false)
+  const [setupHidden, setSetupHidden] = useState(false)
 
   useEffect(() => {
     const active = true
@@ -74,6 +79,11 @@ export default function DashboardPage() {
         if (!active) return
         const savedName = typeof meJson?.user?.fullName === 'string' ? meJson.user.fullName.trim() : ''
         setFirstName(savedName ? savedName.split(' ')[0] : nameFromEmail(meJson?.user?.email))
+        // "Skip for now" sets a cookie but never finishes setup, so this is the
+        // only reliable signal that the profile is still incomplete.
+        const legacy = (meJson?.profile?.settings as Record<string, unknown> | undefined)
+          ?.onboarded_at
+        setNeedsSetup(!meJson?.profile?.onboarded_at && !legacy)
         setMoodLogs((moodJson.data ?? []) as MoodLog[])
         setEntries((journalJson.data ?? []) as JournalEntry[])
       })
@@ -112,6 +122,30 @@ export default function DashboardPage() {
     <>
       <AppNav title="Home" />
       <div className="page-enter space-y-5 pb-8">
+        {/* ── Setup reminder ─────────────────────────────────── */}
+        {needsSetup && !setupHidden && (
+          <div className="flex items-center gap-3 rounded-[20px] border border-[#D9D2F2] bg-[#F3EFFF] px-4 py-3.5">
+            <Sparkles size={18} className="shrink-0 text-plum" aria-hidden="true" />
+            <p className="min-w-0 flex-1 text-[13.5px] leading-5 text-charcoal/75">
+              Your profile is not set up yet — interests and goals help us show you the right
+              people.
+            </p>
+            <Link
+              href="/onboarding"
+              className="shrink-0 rounded-full bg-plum px-4 py-2 text-[12.5px] font-bold text-white"
+            >
+              Set up
+            </Link>
+            <button
+              type="button"
+              onClick={() => setSetupHidden(true)}
+              aria-label="Dismiss"
+              className="shrink-0 rounded-full p-1.5 text-charcoal/40 hover:bg-plum/5"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
         {/* ── Sunset hero banner ───────────────────────────────── */}
         <section
           className="relative overflow-hidden rounded-[24px] bg-plum px-7 py-8 text-cream sm:px-9 sm:py-10"

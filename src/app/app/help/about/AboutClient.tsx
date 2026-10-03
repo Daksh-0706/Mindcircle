@@ -84,7 +84,7 @@ export default function AboutPage() {
   return (
     <>
       <AppNav title="About MindCircle" showBack />
-      <div className="page-enter mx-auto max-w-2xl space-y-5 pb-10">
+      <div className="page-enter mx-auto max-w-2xl space-y-5 px-4 sm:px-6 pb-10">
         {/* ── Brand hero ─────────────────────────────── */}
         <section
           className="relative overflow-hidden rounded-[24px] text-white shadow-[0_12px_40px_rgba(74,44,94,0.20)]"

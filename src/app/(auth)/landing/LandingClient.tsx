@@ -86,6 +86,15 @@ function Navbar() {
     { label: 'Testimonials', href: '#testimonials' },
   ]
 
+  const moreLinks = [
+    { label: 'About', href: '/app/help/about' },
+    { label: 'Support', href: '/app/crisis' },
+    { label: 'Contact Us', href: '/app/help/support' },
+  ]
+
+  const navLinkClass =
+    'text-sm font-medium text-charcoal/70 hover:text-plum transition-colors'
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -103,13 +112,14 @@ function Navbar() {
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-8">
             {links.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-charcoal/70 hover:text-plum transition-colors"
-              >
+              <a key={link.href} href={link.href} className={navLinkClass}>
                 {link.label}
               </a>
+            ))}
+            {moreLinks.map((link) => (
+              <Link key={link.href} href={link.href} className={navLinkClass}>
+                {link.label}
+              </Link>
             ))}
           </div>
 
@@ -117,7 +127,7 @@ function Navbar() {
           <div className="hidden md:block">
             <Link
               href="/signup"
-              className="btn-gradient px-6 py-2.5 rounded-full text-sm font-semibold inline-block"
+              className="px-6 py-2.5 rounded-full text-sm font-semibold inline-block bg-plum text-white shadow-medium hover:bg-plum-dark transition-colors"
             >
               Get Started
             </Link>
@@ -140,7 +150,7 @@ function Navbar() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="md:hidden glass-card border-t border-white/30"
+          className="md:hidden bg-white/95 backdrop-blur-md border-t border-warm-gray/20 shadow-medium"
         >
           <div className="px-4 py-6 space-y-4">
             {links.map((link) => (
@@ -153,9 +163,19 @@ function Navbar() {
                 {link.label}
               </a>
             ))}
+            {moreLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block text-base font-medium text-charcoal/80 hover:text-plum transition-colors py-2"
+                onClick={() => setMobileOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
             <Link
               href="/signup"
-              className="btn-gradient block text-center py-3 rounded-xl text-sm font-semibold mt-4"
+              className="block text-center py-3 rounded-xl text-sm font-semibold mt-4 bg-plum text-white shadow-medium hover:bg-plum-dark transition-colors"
               onClick={() => setMobileOpen(false)}
             >
               Get Started
@@ -619,15 +639,6 @@ function Footer() {
                   {CONTACT.email}
                 </a>
               </li>
-              <li>
-                <a
-                  href={`mailto:${CONTACT.supportEmail}`}
-                  className="flex items-center gap-2 hover:text-cream transition-colors break-all"
-                >
-                  <Mail className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  {CONTACT.supportEmail}
-                </a>
-              </li>
               <li className="flex items-start gap-2 text-cream/60">
                 <MapPin className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
                 <span>
@@ -649,6 +660,9 @@ function Footer() {
             </Link>
             <Link href="/privacy" className="hover:text-cream transition-colors">
               Privacy
+            </Link>
+            <Link href="/app/help/about" className="hover:text-cream transition-colors">
+              About
             </Link>
             <Link href="/app/help/support" className="hover:text-cream transition-colors">
               Support

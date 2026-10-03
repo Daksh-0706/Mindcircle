@@ -4,21 +4,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { AppNav } from '../../../components/layout/AppNavContext'
 import Skeleton from '../../../components/ui/Skeleton'
 import EmptyState from '../../../components/ui/EmptyState'
-import { Heart, LockKeyhole, MessageCircle, Search, Users } from 'lucide-react'
-import { cn } from '../../../lib/utils'
-import { roomEmoji } from '../../../lib/alias'
 import NotoEmoji from '../../../components/ui/NotoEmoji'
-
-type Room = {
-  id: string
-  name: string
-  member_count: number
-  is_member: boolean
-  last_message: { content: string; created_at: string } | null
-}
+import { Compass, Heart, LockKeyhole, MessageCircle, Search } from 'lucide-react'
+import { cn } from '../../../lib/utils'
 
 type DmThread = {
   participant_id: string
+  name: string
+  alias: string | null
+  avatar_emoji: string
   last_message: string
   last_at: string
   unread: number
@@ -57,22 +51,18 @@ const CARD_ART_FADE = {
 } as const
 
 export default function ChatsPage() {
-  const [rooms, setRooms] = useState<Room[]>([])
   const [threads, setThreads] = useState<DmThread[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<'all' | 'rooms' | 'people'>('all')
+  const [filter, setFilter] = useState<'all' | 'people'>('all')
 
   useEffect(() => {
     let active = true
-    Promise.all([
-      fetch('/api/chat').then((res) => (res.ok ? res.json() : { data: [] })),
-      fetch('/api/chat/dm').then((res) => (res.ok ? res.json() : { data: [] })),
-    ])
-      .then(([roomsJson, dmJson]) => {
+    fetch('/api/chat/dm')
+      .then((res) => (res.ok ? res.json() : { data: [] }))
+      .then((dmJson) => {
         if (!active) return
-        setRooms((roomsJson.data ?? []) as Room[])
         setThreads((dmJson.data ?? []) as DmThread[])
       })
       .catch(() => {
@@ -87,17 +77,17 @@ export default function ChatsPage() {
   }, [])
 
   const q = query.trim().toLowerCase()
-  const filteredRooms = useMemo(
-    () => rooms.filter((r) => !q || r.name.toLowerCase().includes(q)),
-    [rooms, q],
-  )
   const filteredThreads = useMemo(
-    () => threads.filter((t) => !q || t.last_message.toLowerCase().includes(q)),
+    () =>
+      threads.filter(
+        (t) =>
+          !q ||
+          t.last_message.toLowerCase().includes(q) ||
+          (t.alias ?? '').toLowerCase().includes(q),
+      ),
     [threads, q],
   )
-  const showRooms = filter !== 'people'
-  const showPeople = filter !== 'rooms'
-  const hasAny = rooms.length > 0 || threads.length > 0
+  const hasAny = threads.length > 0
   const totalUnread = threads.reduce((sum, t) => sum + t.unread, 0)
 
   return (
@@ -119,13 +109,21 @@ export default function ChatsPage() {
               <h1 className="font-display text-[38px] font-bold leading-[1.1] text-[#3D2A52]">
                 Your{' '}<span className="bg-gradient-to-r from-[#A78BDA] to-[#8B7BD8] bg-clip-text text-transparent">Conversations</span>
               </h1>
-              <p className="mt-2 text-[14px] text-charcoal/70">Rooms and quiet one-on-ones, all in one place.</p>
-              <Link
-                href="/app/connect"
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#5B4B9E] to-[#7C5FA8] px-6 py-2.5 text-[14px] font-semibold text-white shadow-[0_4px_14px_rgba(91,75,158,0.3)] transition-transform hover:-translate-y-0.5"
-              >
-                <MessageCircle size={15} /> New Chat
-              </Link>
+              <p className="mt-2 text-[14px] text-charcoal/70">Quiet one-on-ones, all in one place.</p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/app/discover"
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#5B4B9E] to-[#7C5FA8] px-6 py-2.5 text-[14px] font-semibold text-white shadow-[0_4px_14px_rgba(91,75,158,0.3)] transition-transform hover:-translate-y-0.5"
+                >
+                  <Compass size={15} /> Find People
+                </Link>
+                <Link
+                  href="/app/chats/new"
+                  className="inline-flex items-center gap-2 rounded-full border border-plum/20 bg-white px-6 py-2.5 text-[14px] font-semibold text-plum shadow-[0_4px_14px_rgba(91,75,158,0.14)] transition-transform hover:-translate-y-0.5"
+                >
+                  <MessageCircle size={15} /> New Chat
+                </Link>
+              </div>
             </div>
           </section>
 
@@ -135,14 +133,13 @@ export default function ChatsPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search rooms or names..."
+                placeholder="Search names..."
                 className="flex-1 bg-transparent py-3 pl-2.5 pr-3 text-sm text-charcoal outline-none placeholder:text-warm-gray"
               />
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setFilter('all')} className={filter === 'all' ? 'rounded-full bg-gradient-to-r from-[#5B4B9E] to-[#7C5FA8] px-4 py-2 text-[13px] font-bold text-white shadow-[0_3px_10px_rgba(91,75,158,0.25)]' : 'rounded-full border border-warm-gray-lighter bg-white px-4 py-2 text-[13px] font-semibold text-plum transition-colors hover:border-plum/30'}>All</button>
               <button onClick={() => setFilter('people')} className={filter === 'people' ? 'rounded-full bg-gradient-to-r from-[#5B4B9E] to-[#7C5FA8] px-4 py-2 text-[13px] font-bold text-white shadow-[0_3px_10px_rgba(91,75,158,0.25)]' : 'rounded-full border border-warm-gray-lighter bg-white px-4 py-2 text-[13px] font-semibold text-plum transition-colors hover:border-plum/30'}>Unread {totalUnread > 0 ? `(${totalUnread})` : ''}</button>
-              <button onClick={() => setFilter('rooms')} className={filter === 'rooms' ? 'rounded-full bg-gradient-to-r from-[#5B4B9E] to-[#7C5FA8] px-4 py-2 text-[13px] font-bold text-white shadow-[0_3px_10px_rgba(91,75,158,0.25)]' : 'rounded-full border border-warm-gray-lighter bg-white px-4 py-2 text-[13px] font-semibold text-plum transition-colors hover:border-plum/30'}>Rooms</button>
             </div>
           </div>
 
@@ -165,56 +162,15 @@ export default function ChatsPage() {
               <EmptyState
                 icon={<MessageCircle size={26} />}
                 title="No conversations yet"
-                description="Join a room from Connect and your chats will appear here."
-                action={{ label: 'Browse rooms', onClick: () => { window.location.href = '/app/connect' } }}
+                description="Start a quiet one-on-one and it will show up here."
               />
             ) : (
               <>
-                {showRooms && filteredRooms.map((room, i) => {
-                  const theme = CHAT_ART[i % CHAT_ART.length]
-                  return (
-                    <Link
-                      href={`/app/chat/${room.id}`}
-                      key={room.id}
-                      className={cn(
-                        'relative flex items-center gap-3.5 overflow-hidden rounded-[20px] border border-warm-gray-lighter/60 p-3 pr-5 transition-transform hover:-translate-y-0.5',
-                        theme.tint,
-                      )}
-                    >
-                      {/* themed art bleeding from the right edge */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={theme.art}
-                        alt=""
-                        aria-hidden="true"
-                        className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right"
-                        style={CARD_ART_FADE}
-                      />
-                      <span className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/90 shadow-[0_2px_8px_rgba(74,44,94,0.08)]">
-                        <NotoEmoji emoji={roomEmoji(room.name)} size={22} />
-                      </span>
-                      <span className="relative z-10 min-w-0 flex-1">
-                        <span className="flex items-center justify-between gap-3">
-                          <span className="truncate text-[15px] font-bold text-charcoal">{room.name}</span>
-                          <span className="shrink-0 text-[11px] text-warm-gray/80">{room.last_message ? timeAgo(room.last_message.created_at) : ''}</span>
-                        </span>
-                        <span className="mt-0.5 flex items-center justify-between gap-3">
-                          <span className="truncate text-[13px] text-charcoal/70">
-                            {room.last_message ? room.last_message.content : `${room.member_count} members · say hello`}
-                          </span>
-                          <span className="flex shrink-0 items-center gap-1 text-[10px] text-warm-gray/80">
-                            <Users size={10} /> {room.member_count}
-                          </span>
-                        </span>
-                      </span>
-                    </Link>
-                  )
-                })}
-                {showPeople && filteredThreads.map((thread, i) => {
+                {filteredThreads.map((thread, i) => {
                   const theme = CHAT_ART[(i + 2) % CHAT_ART.length]
                   return (
                     <Link
-                      href={`/app/chat/${thread.participant_id}`}
+                      href={`/app/profile/${thread.participant_id}`}
                       key={thread.participant_id}
                       className={cn(
                         'relative flex items-center gap-3.5 overflow-hidden rounded-[20px] border border-warm-gray-lighter/60 p-3 pr-5 transition-transform hover:-translate-y-0.5',
@@ -230,16 +186,18 @@ export default function ChatsPage() {
                         className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right"
                         style={CARD_ART_FADE}
                       />
-                      <span className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/90 text-[14px] font-bold text-plum shadow-[0_2px_8px_rgba(74,44,94,0.08)]">
-                        A
+                      <span className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/90 shadow-[0_2px_8px_rgba(74,44,94,0.08)]">
+                        <NotoEmoji emoji={thread.avatar_emoji ?? '😊'} size={22} />
                       </span>
                       <span className="relative z-10 min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-3">
-                          <span className="truncate text-[15px] font-bold text-charcoal">Anonymous</span>
+                          <span className="truncate text-[13px] font-bold text-charcoal/85">
+                            {thread.alias ?? thread.name}
+                          </span>
                           <span className="shrink-0 text-[11px] text-warm-gray/80">{timeAgo(thread.last_at)}</span>
                         </span>
-                        <span className="mt-0.5 flex items-center justify-between gap-3">
-                          <span className="truncate text-[13px] text-charcoal/70">{thread.last_message}</span>
+                        <span className="mt-0.5 flex items-center justify-end gap-3">
+                          <span className="truncate text-[13px] text-charcoal/70">{thread.last_message || 'No messages yet'}</span>
                           {thread.unread > 0 && (
                             <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#E8506E] px-1.5 text-[11px] font-bold text-white">{thread.unread}</span>
                           )}

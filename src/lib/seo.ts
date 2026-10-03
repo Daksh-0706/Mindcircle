@@ -22,17 +22,17 @@ export const OG_IMAGE_PATH = '/og-image.png'
 /**
  * Real contact details.
  *
- * These are placeholders pending the registered business address and a
- * monitored support inbox. Update them here and every page picks the change
- * up — the support page, the Terms, the Privacy Policy and the landing footer
- * all read from this object rather than hard-coding their own.
+ * One inbox, not several: the footer used to list a separate hello@ and
+ * support@ address, which meant two addresses for the same person and a
+ * second one nobody was reading. Everything — the landing footer, the Terms,
+ * the Privacy Policy and the support form — now points at `email`.
+ *
+ * Update it here and every page picks the change up.
  */
 export const CONTACT = {
-  email: 'hello@mindcircle.app',
-  supportEmail: 'support@mindcircle.app',
-  crisisEmail: 'crisis@mindcircle.app',
-  phone: '+91 00000 00000',
-  address: 'Bengaluru, Karnataka, India',
+  email: 'daksh.24b0101340@abes.ac.in',
+  phone: '+91 8383034431',
+  address: 'Uttar Pradesh, India',
   hours: 'Monday–Saturday, 9:00 AM – 7:00 PM IST',
 } as const
 

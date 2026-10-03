@@ -38,7 +38,12 @@ export const metadata: Metadata = {
     url: SITE_URL,
     locale: 'en_IN',
     images: [
-      { url: OG_IMAGE_PATH, width: 1200, height: 630, alt: 'MindCircle — Your Safe Space' },
+      {
+        url: OG_IMAGE_PATH,
+        width: 1200,
+        height: 630,
+        alt: 'MindCircle — a privacy-first mental health platform for students and young professionals',
+      },
     ],
   },
   twitter: {

@@ -41,7 +41,7 @@ export default function FaqPage() {
   return (
     <>
       <AppNav title="Help & FAQ" showBack />
-      <div className="page-enter mx-auto max-w-3xl space-y-6 pb-8">
+      <div className="page-enter mx-auto max-w-3xl space-y-6 px-4 sm:px-6 pb-8">
         <div>
           <p className="text-sm text-warm-gray">Answers for common questions</p>
           <h1 className="mt-1 font-heading text-3xl font-semibold">How can we help?</h1>

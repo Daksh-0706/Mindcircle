@@ -2,71 +2,103 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, ChevronRight } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowRight, ChevronLeft, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import NotoEmoji from '../../../components/ui/NotoEmoji'
 import { Logo } from '../../../components/common/Logo'
+import { cn } from '@/lib/utils'
+import { PRESELECTED_GOALS } from '@/lib/profile-options'
+import type { Draft, DraftPatch } from './draft'
+import StepProfile from './steps/StepProfile'
+import StepInterests from './steps/StepInterests'
+import StepGoals from './steps/StepGoals'
+import StepSummary from './steps/StepSummary'
 
-const pageTransition = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -12 },
+/* ── Step config ──────────────────────────────────────────── */
+
+type StepConfig = {
+  label: string
+  sub: string
+  heading: (draft: Draft) => string
+  intro: string
+  /** Full-bleed backdrop for this step (see the onboarding mockups). */
+  bg: string
 }
 
-/* ── Slide Data ───────────────────────────────────────────── */
-
-const slides = [
+const STEPS: StepConfig[] = [
   {
-    title: 'Welcome to MindCircle',
-    description: 'A safe space for your mental wellness journey',
-    emoji: '🌱',
-    bgColor: 'from-sage/20 to-sage-light/20',
-    accentColor: 'bg-sage',
+    label: 'Profile Details',
+    sub: 'Tell us about yourself',
+    heading: () => "Let's set up your profile",
+    intro:
+      'A few details to help you connect with the right people and make your experience more meaningful.',
+    bg: '/onboarding/bg-plain.png',
   },
   {
-    title: 'Journal & Track',
-    description:
-      'Express yourself freely with private journaling and mood tracking',
-    emoji: '📝',
-    bgColor: 'from-plum/20 to-plum-light/20',
-    accentColor: 'bg-plum',
+    label: 'Interests',
+    sub: 'What are you into?',
+    heading: () => 'What are you into?',
+    intro: 'Pick a few interests so we can show you people and rooms that actually match your vibe.',
+    bg: '/onboarding/bg-plain.png',
   },
   {
-    title: 'Connect & Heal',
-    description:
-      'Find support in a community that understands',
-    emoji: '💜',
-    bgColor: 'from-terracotta/20 to-terracotta-light/20',
-    accentColor: 'bg-terracotta',
+    label: 'Your Goals',
+    sub: 'What do you want from Mindcircle?',
+    heading: () => 'What do you want from Mindcircle?',
+    intro:
+      'Choose a few goals so we can personalize your experience and show you people with similar journeys.',
+    bg: '/onboarding/bg-plain.png',
+  },
+  {
+    label: "You're all set!",
+    sub: "Let's begin your journey",
+    heading: (draft) => (draft.name ? `You're all set, ${draft.name}! 🎉` : "You're all set! 🎉"),
+    intro: "Your profile is ready. Here's a quick summary. You can always edit this later.",
+    bg: '/onboarding/bg-plain.png',
   },
 ]
 
-const slideVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 200 : -200,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? -200 : 200,
-    opacity: 0,
-  }),
+const stepTransition = {
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -14 },
+}
+
+/**
+ * Remembers that the setup gate has been satisfied.
+ *
+ * AppLayout only checks the profile once per browser; without this flag every
+ * fresh visitor would bounce back to /onboarding on their next navigation.
+ */
+function markOnboarded() {
+  if (typeof document === 'undefined') return
+  document.cookie = `mc_onboarded=1; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
 }
 
 /* ── Page ─────────────────────────────────────────────────── */
 
-export default function OnboardingPage() {
+export default function OnboardingClient() {
   const router = useRouter()
-  const [[current, direction], setCurrent] = useState([0, 0])
-  const isLast = current === slides.length - 1
+  const [step, setStep] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [draft, setDraft] = useState<Draft>({
+    name: '',
+    location: '',
+    bio: '',
+    avatar: '🌱',
+    // Private by default: a new member has not yet chosen to be findable, and
+    // making that an explicit first step keeps it from being a silent setting.
+    isPublic: false,
+    interests: [],
+    goals: PRESELECTED_GOALS,
+  })
 
-  // Provision the profile row as soon as we get here. The dashboard and
-  // several API routes read `users`, so a signup that skipped this step
-  // would land the user on a broken first screen.
+  const patch = (next: DraftPatch) => setDraft((prev) => ({ ...prev, ...next }))
+
+  // Session guard + profile provisioning + prefill. The dashboard and several
+  // API routes read `users`, so a signup that never gets here would land on a
+  // broken first screen.
   useEffect(() => {
     let active = true
     createClient()
@@ -77,7 +109,40 @@ export default function OnboardingPage() {
           router.replace('/login')
           return
         }
-        return fetch('/api/profile/ensure', { method: 'POST' }).catch(() => undefined)
+        return fetch('/api/profile/ensure', { method: 'POST' })
+          .then(() => (active ? fetch('/api/me') : Response.error()))
+          .then((res) => (res.ok ? res.json() : null))
+          .then((json) => {
+            if (!active || !json) return
+            const profile = json.profile ?? {}
+            const settings = (profile.settings ?? {}) as Record<string, unknown>
+            const pick = (column: unknown, key: string) =>
+              column ?? (typeof settings[key] === 'string' ? settings[key] : undefined)
+            setDraft((prev) => ({
+              ...prev,
+              name:
+                (typeof profile.display_name === 'string' && profile.display_name) ||
+                (typeof json.displayName === 'string' && json.displayName) ||
+                (typeof json.user?.fullName === 'string' ? json.user.fullName : '') ||
+                prev.name,
+              avatar: profile.avatar_emoji || prev.avatar,
+              location: (pick(profile.location, 'location') as string) || prev.location,
+              bio: (pick(profile.bio, 'bio') as string) || prev.bio,
+              isPublic:
+                typeof profile.is_public === 'boolean' ? profile.is_public : prev.isPublic,
+              interests: Array.isArray(profile.interests) && profile.interests.length
+                ? (profile.interests as string[])
+                : Array.isArray(settings.interests)
+                  ? (settings.interests as string[])
+                  : prev.interests,
+              goals: Array.isArray(profile.goals) && profile.goals.length
+                ? (profile.goals as string[])
+                : Array.isArray(settings.goals)
+                  ? (settings.goals as string[])
+                  : prev.goals,
+            }))
+          })
+          .catch(() => undefined)
       })
       .catch(() => undefined)
     return () => {
@@ -85,158 +150,252 @@ export default function OnboardingPage() {
     }
   }, [router])
 
-  const slide = slides[current]
+  const config = STEPS[step]
+  const isLast = step === STEPS.length - 1
+  const canContinue = step !== 0 || draft.name.trim().length > 0
 
-  const paginate = (newDirection: number) => {
-    const next = current + newDirection
-    if (next < 0) return
-    if (next >= slides.length) {
+  const save = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      if (draft.name.trim()) {
+        await fetch('/api/auth/update-name', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ full_name: draft.name.trim() }),
+        })
+      }
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          avatar_emoji: draft.avatar,
+          display_name: draft.name.trim(),
+          location: draft.location.trim(),
+          bio: draft.bio.trim(),
+          is_public: draft.isPublic,
+          interests: draft.interests,
+          goals: draft.goals,
+          onboarded_at: new Date().toISOString(),
+        }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        throw new Error(json?.error || 'Could not save your profile. Please try again.')
+      }
+      markOnboarded()
       router.replace('/app')
       router.refresh()
-      return
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save your profile. Please try again.')
+      setSaving(false)
     }
-    setCurrent([next, newDirection])
   }
 
-  const handleSkip = () => {
+  /** Skip never blocks on errors — the user asked to move on. */
+  const skip = () => {
+    fetch('/api/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ onboarded_at: new Date().toISOString() }),
+    }).catch(() => undefined)
+    markOnboarded()
     router.replace('/app')
     router.refresh()
   }
 
-  const handleGetStarted = () => {
-    router.replace('/app')
-    router.refresh()
+  const goTo = (next: number) => {
+    if (saving) return
+    setError('')
+    setStep(Math.max(0, Math.min(STEPS.length - 1, next)))
+  }
+
+  const renderStep = () => {
+    const props = { draft, patch }
+    switch (step) {
+      case 0:
+        return <StepProfile {...props} />
+      case 1:
+        return <StepInterests {...props} />
+      case 2:
+        return <StepGoals {...props} />
+      default:
+        return <StepSummary draft={draft} onEdit={goTo} />
+    }
   }
 
   return (
-    <>
-    <motion.div
-      variants={pageTransition}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="min-h-screen flex flex-col items-center justify-between px-4 py-12 sm:py-16"
-    >
-      {/* Top: Skip button */}
-      <div className="w-full max-w-md flex justify-end">
-        {!isLast && (
-          <button
-            onClick={handleSkip}
-            className="text-sm text-warm-gray font-medium hover:text-charcoal transition-colors px-3 py-1.5"
-          >
-            Skip
-          </button>
-        )}
-      </div>
+    <div className="relative min-h-screen overflow-hidden bg-[#F4F3FC] lg:h-screen">
+      {/* Step backdrop */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={config.bg}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-white/25 lg:bg-transparent" />
 
-      {/* Middle: Slides */}
-      <div className="flex-1 flex items-center justify-center w-full max-w-md">
-        <div className="w-full relative overflow-hidden" style={{ minHeight: 420 }}>
-          <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-              key={current}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full"
-            >
-              <div className="text-center">
-                {/* Illustration placeholder: colored circle with emoji */}
-                <div className="relative mx-auto mb-10 w-56 h-56">
-                  {/* Outer ring */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <motion.div
-                      className={`w-52 h-52 rounded-full bg-gradient-to-br ${slide.bgColor} flex items-center justify-center`}
-                      animate={{ rotate: [0, 3, -2, 0] }}
-                      transition={{
-                        duration: 6,
-                        repeat: Infinity,
-                        ease: 'easeInOut',
-                      }}
-                    >
-                      <NotoEmoji emoji={slide.emoji} size={84} />
-                    </motion.div>
-                  </div>
-
-                  {/* Orbiting dot */}
-                  <motion.div
-                    className="absolute top-0 left-1/2 -translate-x-1/2"
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 12,
-                      repeat: Infinity,
-                      ease: 'linear',
-                    }}
-                    style={{ transformOrigin: '0 112px' }}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded-full ${slide.accentColor} shadow-medium`}
-                    />
-                  </motion.div>
-                </div>
-
-                {/* Text */}
-                <h2 className="font-heading text-2xl sm:text-3xl font-bold text-charcoal mb-3">
-                  {slide.title}
-                </h2>
-                <p className="text-warm-gray text-base leading-relaxed max-w-xs mx-auto">
-                  {slide.description}
-                </p>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Bottom: Navigation */}
-      <div className="w-full max-w-md">
-        {/* Pagination dots */}
-        <div className="flex justify-center gap-2.5 mb-8">
-          {slides.map((_, i) => (
+      <div className="relative flex min-h-screen flex-col px-4 py-5 sm:px-6 lg:h-screen lg:px-10 lg:py-4">
+        {/* ── Top bar ─────────────────────────────────────── */}
+        <header className="flex items-center justify-between gap-4">
+          <Logo height={28} withWordmark />
+          {!isLast && (
             <button
-              key={i}
-              onClick={() => {
-                const dir = i > current ? 1 : -1
-                setCurrent([i, dir])
-              }}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === current
-                  ? 'w-8 bg-gradient-to-r from-plum to-terracotta'
-                  : 'w-2 bg-warm-gray-lighter hover:bg-warm-gray-light'
-              }`}
-              aria-label={`Go to slide ${i + 1}`}
-            />
-          ))}
-        </div>
+              type="button"
+              onClick={skip}
+              className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-[#5B5780] transition-colors hover:text-[#241B4F]"
+            >
+              Skip for now
+            </button>
+          )}
+        </header>
 
-        {/* Action button */}
-        {isLast ? (
-          <button
-            onClick={handleGetStarted}
-            className="btn-gradient w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-          >
-            Get Started <ArrowRight className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            onClick={() => paginate(1)}
-            className="btn-gradient w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-          >
-            Next <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 py-5 lg:h-[calc(100vh-6rem)] lg:min-h-0 lg:flex-row lg:gap-8 lg:py-4">
+          {/* ── Step rail ─────────────────────────────────── */}
+          <aside className="hidden w-[248px] shrink-0 lg:block">
+            <ol className="space-y-1">
+              {STEPS.map((item, index) => {
+                const active = index === step
+                const done = index < step
+                return (
+                  <li key={item.label} className="relative">
+                    {index < STEPS.length - 1 && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-[17px] top-10 h-[calc(100%-14px)] w-px bg-[#6C4CE0]/20"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => goTo(index)}
+                      className={cn(
+                        'relative flex w-full items-start gap-3 rounded-2xl px-3 py-2 text-left transition-colors',
+                        active && 'bg-[#EDEBFB]/85',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13.5px] font-bold transition-colors',
+                          active
+                            ? 'bg-gradient-to-br from-[#6C4CE0] to-[#5533C6] text-white shadow-[0_6px_16px_rgba(108,76,224,0.35)]'
+                            : done
+                              ? 'bg-[#DDD8F7] text-[#5B3ACF]'
+                              : 'bg-[#EAE8F6] text-[#9995BE]',
+                        )}
+                      >
+                        {index + 1}
+                      </span>
+                      <span className="min-w-0 pt-0.5">
+                        <span
+                          className={cn(
+                            'block text-[14.5px] font-bold',
+                            active ? 'text-[#3B2C8F]' : 'text-[#3F3B63]',
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                        <span className="block text-[13px] leading-5 text-[#7B7799]">{item.sub}</span>
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          </aside>
 
-        {/* Branding */}
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <Logo height={20} withWordmark />
-          
+          {/* ── Mobile rail ───────────────────────────────── */}
+          <div className="flex items-center gap-2 lg:hidden">
+            {STEPS.map((item, index) => (
+              <span
+                key={item.label}
+                className={cn(
+                  'h-1.5 flex-1 rounded-full transition-colors',
+                  index <= step ? 'bg-[#6C4CE0]' : 'bg-white/70',
+                )}
+                title={item.label}
+              />
+            ))}
+            <span className="ml-1 shrink-0 text-[12px] font-bold text-[#5B5780]">
+              {step + 1}/{STEPS.length}
+            </span>
+          </div>
+
+          {/* ── Card ──────────────────────────────────────── */}
+          <main className="flex min-h-0 flex-1 flex-col rounded-[26px] border border-white/70 bg-white/90 p-5 shadow-[0_24px_60px_rgba(74,44,94,0.12)] backdrop-blur-sm sm:p-6 lg:overflow-y-auto lg:p-7">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step}
+                variants={stepTransition}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <p className="text-[13px] font-semibold text-[#8C88AE]">
+                  Step {step + 1} of {STEPS.length}
+                </p>
+                <h1 className="mt-1.5 font-heading text-[26px] font-extrabold leading-[1.15] tracking-tight text-[#241B4F] sm:text-[34px]">
+                  {config.heading(draft)}
+                </h1>
+                <p className="mt-2 max-w-xl text-[14px] leading-5 text-[#6E6A8C]">{config.intro}</p>
+
+                <div className="mt-5">{renderStep()}</div>
+              </motion.div>
+            </AnimatePresence>
+
+            {error && (
+              <p role="alert" className="mt-5 rounded-xl bg-[#FDECEC] px-4 py-3 text-sm text-[#B03A3A]">
+                {error}
+              </p>
+            )}
+
+            {/* ── Actions ─────────────────────────────────── */}
+            <div className="mt-6 flex items-center justify-between gap-3">
+              {step > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => goTo(step - 1)}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-[#DFDCEE] bg-white px-6 py-3 text-[14.5px] font-bold text-[#3F3B63] transition-colors hover:border-[#C9C4EE] disabled:opacity-50"
+                >
+                  <ChevronLeft size={17} aria-hidden="true" /> Back
+                </button>
+              ) : (
+                <span />
+              )}
+
+              {isLast ? (
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving}
+                  className="inline-flex min-w-[176px] items-center justify-center gap-2 rounded-2xl bg-[#241B4F] px-7 py-3 text-[14.5px] font-bold text-white transition-colors hover:bg-[#1B1540] disabled:opacity-60"
+                >
+                  {saving ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : null}
+                  {saving ? 'Saving…' : 'Finish'}
+                  {!saving && <ArrowRight size={17} aria-hidden="true" />}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => goTo(step + 1)}
+                  disabled={!canContinue}
+                  className="inline-flex min-w-[176px] items-center justify-center gap-2 rounded-2xl bg-[#241B4F] px-7 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-[#1B1540] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next <ArrowRight size={17} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+
+            {step === 0 && !canContinue && (
+              <p className="mt-3 text-right text-[12.5px] text-[#A3A0B8]">
+                Add a name to continue — you can change it later.
+              </p>
+            )}
+          </main>
         </div>
       </div>
-    </motion.div>
-    </>
+    </div>
   )
 }

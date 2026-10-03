@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { SideNav } from './SideNav'
+import { Logo } from '../common/Logo'
+import { ArrowLeft } from 'lucide-react'
 import { MobileHeader } from './MobileHeader'
 import BottomNav from './BottomNav'
 import { TopBar } from './TopBar'
@@ -13,6 +16,20 @@ import { useIsMobile, useIsTablet, useIsDesktop } from '../../hooks/useMediaQuer
 import { cn } from '../../lib/utils'
 
 const FALLBACK_USER = { name: 'Guest', initials: 'GU', role: 'Member' }
+
+/**
+ * Public, pre-login routes that live under `/app/*`. They are reachable
+ * without a session (see PUBLIC_APP_PATHS in the Supabase middleware), so
+ * rendering the signed-in dashboard chrome around them — SideNav, TopBar,
+ * BottomNav, the "Guest" avatar — was misleading. These render standalone:
+ * just the page content on the cream background.
+ */
+const STANDALONE_PATHS = [
+  '/app/crisis',
+  '/app/help/about',
+  '/app/help/faq',
+  '/app/help/support',
+]
 
 function displayName(user: { email?: string | null; user_metadata?: Record<string, unknown> }) {
   const metaName = user.user_metadata?.full_name
@@ -63,7 +80,39 @@ export function AppLayout({
   rightSidebar,
 }: AppLayoutProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const standalone = STANDALONE_PATHS.includes(pathname)
   const isMobile = useIsMobile()
+
+  // New accounts must complete the 4-step profile setup once. Signup used to
+  // rely on a post-OTP redirect to /onboarding, which silently fell through
+  // to the dashboard whenever the session wasn't ready yet — so the gate
+  // lives here instead, where every /app entry passes through. A cookie keeps
+  // it to one request per browser, not one per navigation.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (document.cookie.includes('mc_onboarded=')) return
+
+    let active = true
+    fetch('/api/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!active || !json) return
+        const legacy = (json.profile?.settings as Record<string, unknown> | undefined)
+          ?.onboarded_at
+        const onboardedAt = json.profile?.onboarded_at || legacy
+        if (onboardedAt) {
+          document.cookie = `mc_onboarded=1; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
+          return
+        }
+        router.replace('/onboarding')
+      })
+      .catch(() => undefined)
+
+    return () => {
+      active = false
+    }
+  }, [router])
   const isTablet = useIsTablet()
   const isDesktop = useIsDesktop()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -72,6 +121,7 @@ export function AppLayout({
 
   // Resolve the signed-in user so the shell shows their name instead of "Guest".
   useEffect(() => {
+    if (standalone) return
     let active = true
     createClient()
       .auth.getUser()
@@ -84,7 +134,7 @@ export function AppLayout({
     return () => {
       active = false
     }
-  }, [])
+  }, [standalone])
 
   // Fall back to caller-provided props, then to the fetched user.
   const resolved = authUser ?? {
@@ -106,6 +156,7 @@ export function AppLayout({
     <NotificationsProvider>
       <AppNavProvider>
       <Shell
+        standalone={standalone}
         compact={compact}
         isDesktop={isDesktop}
         defaultTitle={defaultTitle}
@@ -126,6 +177,7 @@ export function AppLayout({
 
 function Shell({
   children,
+  standalone,
   compact,
   isDesktop,
   defaultTitle,
@@ -138,6 +190,7 @@ function Shell({
   setSidebarOpen,
 }: {
   children: React.ReactNode
+  standalone: boolean
   compact: boolean
   isDesktop: boolean
   defaultTitle: string
@@ -151,6 +204,34 @@ function Shell({
 }) {
   const { nav } = useAppNav()
   const title = nav.title || defaultTitle
+
+  // ── Standalone (public help/crisis pages): content only, no dashboard ──
+  if (standalone) {
+    return (
+      <div className="min-h-screen bg-cream">
+        {/* Full-bleed on purpose: the crisis hero artwork is a page-wide band
+            that fades into the background at its edges, so constraining it
+            here would reintroduce the hard rectangle. Each page owns its own
+            max-width and gutters. */}
+        <header className="sticky top-0 z-40 h-16 border-b border-warm-gray/20 bg-cream/85 backdrop-blur-md">
+          <div className="mx-auto flex h-full max-w-6xl items-center gap-3 px-4 sm:px-6">
+            <Link
+              href="/"
+              aria-label="Back to MindCircle home"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-charcoal shadow-[0_4px_16px_rgba(42,27,61,0.12)] transition-transform hover:-translate-y-0.5"
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            </Link>
+            <Link href="/" className="flex items-center" aria-label="MindCircle home">
+              <Logo height={30} withWordmark />
+            </Link>
+          </div>
+        </header>
+        {/* h-16 clears the sticky header so no page starts flush under it. */}
+        <main className="w-full pt-16">{children}</main>
+      </div>
+    )
+  }
 
   // ── Compact layout: mobile & tablet ───────────────────────────────
   if (compact) {

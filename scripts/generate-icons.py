@@ -1,44 +1,80 @@
-"""Generate the PNG icon set + OG image for MindCircle from the brand mark.
+"""Generate the PNG icon set + OG image for MindCircle.
 
 Run: python scripts/generate-icons.py
 Requires Pillow. Output is committed; the script exists so the assets can be
 regenerated at a different size without hand-editing binary files.
+
+The OG card is built from the real brand mark (`public/logo.png`, two reaching
+hands inside a gradient ring) and the two fonts the site actually uses:
+Playfair Display for the headline, Montserrat for everything else. Both are
+variable fonts, fetched once into `.brandfonts/` so the card matches the UI
+instead of approximating it with Arial.
 """
 
-import math
 import os
+import urllib.request
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "public")
+FONTS = os.path.join(ROOT, ".brandfonts")
+
+# Google Fonts' variable originals — same files the site loads from the CDN.
+FONT_SOURCES = {
+    "Montserrat": "https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat%5Bwght%5D.ttf",
+    "PlayfairDisplay": "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf",
+}
 
 # Windows ships Arial/Georgia; fall back to DejaVu on Linux CI.
-FONT_CANDIDATES = {
-    "bold": [
-        "C:/Windows/Fonts/arialbd.ttf",
+FALLBACKS = {
+    "Montserrat": [
         "C:/Windows/Fonts/segoeuib.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     ],
-    "regular": [
-        "C:/Windows/Fonts/arial.ttf",
-        "C:/Windows/Fonts/segoeui.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "PlayfairDisplay": [
+        "C:/Windows/Fonts/georgiab.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
     ],
 }
 
 
-def load_font(kind, size):
-    from PIL import ImageFont
+def font_path(family):
+    """Local variable font, downloading it on first run. None if unavailable."""
+    path = os.path.join(FONTS, f"{family}.ttf")
+    if os.path.exists(path):
+        return path
+    os.makedirs(FONTS, exist_ok=True)
+    try:
+        urllib.request.urlretrieve(FONT_SOURCES[family], path)
+    except Exception as exc:  # offline, or GitHub unreachable
+        print(f"  ! could not fetch {family} ({exc}); using a system fallback")
+        return None
+    return path
 
-    for path in FONT_CANDIDATES[kind]:
-        if os.path.exists(path):
-            return ImageFont.truetype(path, size)
+
+def load_font(family, size, weight):
+    """A variable-font instance at `weight`, or the closest system fallback."""
+    path = font_path(family)
+    if path:
+        f = ImageFont.truetype(path, size)
+        try:
+            f.set_variation_by_axes([weight])
+        except Exception:
+            pass
+        return f
+    for alt in FALLBACKS[family]:
+        if os.path.exists(alt):
+            return ImageFont.truetype(alt, size)
     return ImageFont.load_default()
+
 
 CREAM = (255, 248, 240)
 PLUM = (74, 44, 94)
+PLUM_DEEP = (58, 31, 74)
 TERRACOTTA = (196, 93, 62)
+SAGE = (123, 158, 107)
+WARM_GRAY = (138, 138, 138)
 
 
 def lerp(a, b, t):
@@ -68,14 +104,7 @@ def heart_mask(size, scale=0.56, y_offset=0.0):
     cy = s * 0.5 - r * 0.52 + s * y_offset
     d.ellipse([cx1 - r, cy - r, cx1 + r, cy + r], fill=255)
     d.ellipse([cx2 - r, cy - r, cx2 + r, cy + r], fill=255)
-    d.polygon(
-        [
-            (cx1 - r, cy),
-            (cx2 + r, cy),
-            (s * 0.5, s * 0.5 + r * 1.62),
-        ],
-        fill=255,
-    )
+    d.polygon([(cx1 - r, cy), (cx2 + r, cy), (s * 0.5, s * 0.5 + r * 1.62)], fill=255)
     return m.resize((size, size), Image.LANCZOS)
 
 
@@ -97,36 +126,86 @@ def make_icon(size, rounded=False):
     return out
 
 
+def text_width(d, s, font, tracking=0):
+    w = d.textlength(s, font=font)
+    return w + tracking * max(0, len(s) - 1)
+
+
+def draw_tracked(d, xy, s, font, fill, tracking=0, anchor_center=None):
+    """Draw text with letter-spacing; optionally centre it on anchor_center x."""
+    x, y = xy
+    if anchor_center is not None:
+        x = anchor_center - text_width(d, s, font, tracking) / 2
+    for ch in s:
+        d.text((x, y), ch, fill=fill, font=font)
+        x += d.textlength(ch, font=font) + tracking
+    return x
+
+
+def draw_centered(d, width, y, s, font, fill, tracking=0):
+    draw_tracked(d, (0, y), s, font, fill, tracking, anchor_center=width / 2)
+
+
 def make_og(width=1200, height=630):
     img = Image.new("RGB", (width, height), CREAM)
-    d = ImageDraw.Draw(img)
 
     # Soft corner blobs in brand colours, so the card is not flat cream.
     for cx, cy, rad, color, alpha in [
-        (width * 0.92, height * 0.10, 300, PLUM, 26),
-        (width * 0.06, height * 0.95, 340, TERRACOTTA, 22),
-        (width * 0.55, height * 1.02, 260, (123, 158, 107), 18),
+        (width * 0.94, height * 0.08, 300, PLUM, 26),
+        (width * 0.05, height * 0.96, 340, TERRACOTTA, 22),
+        (width * 0.58, height * 1.04, 280, SAGE, 20),
     ]:
         layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
         ImageDraw.Draw(layer).ellipse(
             [cx - rad, cy - rad, cx + rad, cy + rad], fill=color + (alpha,)
         )
-        img = Image.alpha_composite(img.convert("RGBA"), layer.filter(ImageFilter.GaussianBlur(40))).convert("RGB")
+        img = Image.alpha_composite(
+            img.convert("RGBA"), layer.filter(ImageFilter.GaussianBlur(40))
+        ).convert("RGB")
+
     d = ImageDraw.Draw(img)
 
-    logo = make_icon(180, rounded=True)
-    img.paste(logo, (96, 96), logo)
+    # The real brand mark, centred and sized by width so its 1.8:1 proportions
+    # are preserved exactly as they appear in the nav.
+    mark_w = 380
+    mark = Image.open(os.path.join(OUT, "logo.png")).convert("RGBA")
+    mark_h = round(mark.height * mark_w / mark.width)
+    mark = mark.resize((mark_w, mark_h), Image.LANCZOS)
+    img.paste(mark, ((width - mark_w) // 2, 58), mark)
 
-    wordmark = load_font("bold", 84)
-    tagline = load_font("regular", 40)
-    headline = load_font("bold", 52)
-    meta = load_font("regular", 28)
+    # Wordmark + tagline, locked together as one optical unit under the mark.
+    draw_centered(d, width, 274, "MindCircle", load_font("Montserrat", 76, 700), PLUM, tracking=1)
+    draw_centered(
+        d, width, 368, "YOUR SAFE SPACE", load_font("Montserrat", 28, 600), TERRACOTTA, tracking=7
+    )
 
-    d.text((320, 132), "MindCircle", fill=PLUM, font=wordmark)
-    d.text((320, 232), "Your Safe Space", fill=TERRACOTTA, font=tagline)
-    d.text((96, 372), "A privacy-first mental health", fill=(58, 31, 74), font=headline)
-    d.text((96, 438), "platform for students.", fill=(58, 31, 74), font=headline)
-    d.text((96, 528), "Journal  ·  Mood tracking  ·  Peer support  ·  Counsellors", fill=(138, 138, 138), font=meta)
+    # Headline in the site's display serif.
+    draw_centered(
+        d,
+        width,
+        424,
+        "A privacy-first mental health platform",
+        load_font("PlayfairDisplay", 46, 600),
+        PLUM_DEEP,
+    )
+    draw_centered(
+        d,
+        width,
+        482,
+        "for students and young professionals.",
+        load_font("PlayfairDisplay", 46, 600),
+        PLUM_DEEP,
+    )
+
+    d.line([(300, 566), (900, 566)], fill=(232, 224, 216), width=2)
+    draw_centered(
+        d,
+        width,
+        584,
+        "Anonymous alias  ·  Private journal  ·  Mood tracking  ·  Peer support  ·  Counselling",
+        load_font("Montserrat", 24, 400),
+        WARM_GRAY,
+    )
     return img
 
 

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { authErrorMessage } from '@/lib/auth-errors'
 import { useSearchParams } from 'next/navigation'
 import { Logo } from '@/components/common/Logo'
+import { CONTACT } from '@/lib/seo'
 
 const supabase = createClient()
 
@@ -281,7 +282,13 @@ function VerifyOtpForm() {
           </div>
 
           <p className="mt-6 text-center text-xs text-warm-gray">
-            Didn&apos;t receive an email? Check your spam folder or contact support@mindcircle.in
+            Didn&apos;t receive an email? Check your spam folder or contact{' '}
+            <a
+              href={`mailto:${CONTACT.email}`}
+              className="text-plum underline underline-offset-2 break-all"
+            >
+              {CONTACT.email}
+            </a>
           </p>
         </div>
       </div>

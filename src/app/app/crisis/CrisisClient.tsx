@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ArrowLeft,
   ArrowRight,
   Heart,
   Phone,
@@ -16,7 +15,6 @@ import {
   Flower2,
   Play,
 } from 'lucide-react'
-import Link from 'next/link'
 
 const helplines = [
   {
@@ -149,13 +147,18 @@ export default function CrisisPage() {
           }}
         />
 
-        {/* Hero background illustration (user-provided) */}
+        {/* Hero background illustration (user-provided).
+            The radial mask feathers all four edges so the artwork dissolves
+            into the page background instead of ending on a hard rectangular
+            seam. The ellipse is nudged up so the heart stays fully opaque. */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-x-0 top-0 h-[440px] overflow-hidden sm:h-[540px]"
           style={{
-            maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+            maskImage:
+              'radial-gradient(ellipse 82% 78% at 50% 42%, black 52%, rgba(0,0,0,0.35) 78%, transparent 100%)',
+            WebkitMaskImage:
+              'radial-gradient(ellipse 82% 78% at 50% 42%, black 52%, rgba(0,0,0,0.35) 78%, transparent 100%)',
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -168,15 +171,8 @@ export default function CrisisPage() {
         </div>
 
         <div className="relative mx-auto max-w-3xl px-4 py-5 sm:px-6 lg:px-8">
-          {/* ── Header: back circle left, heart | title right ── */}
-          <div className="flex items-center justify-between">
-            <Link
-              href="/app"
-              aria-label="Back to home"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#2A1B3D] shadow-[0_4px_16px_rgba(42,27,61,0.12)] transition-transform hover:-translate-y-0.5"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+          {/* ── Title. The back button lives in the standalone header now. ── */}
+          <div className="flex items-center justify-end">
             <div className="flex items-center gap-3">
               <Heart className="h-6 w-6 text-[#E0685C]" fill="currentColor" />
               <span aria-hidden="true" className="h-6 w-px bg-[#2A1B3D]/25" />

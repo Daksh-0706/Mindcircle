@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Home, BookOpen, Users, BarChart3, MessageCircle } from 'lucide-react'
+import { Home, BookOpen, Users, Compass, MessageCircle } from 'lucide-react'
 import { NAV_ITEMS } from '../../lib/constants'
 import { cn } from '../../lib/utils'
 
@@ -28,7 +28,7 @@ export default function BottomNav() {
               Home: Home,
               BookOpen: BookOpen,
               Users: Users,
-              BarChart3: BarChart3,
+              Compass: Compass,
               MessageCircle: MessageCircle,
             }[item.icon]
 

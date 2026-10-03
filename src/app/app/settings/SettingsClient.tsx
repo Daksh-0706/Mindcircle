@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   Bell, ChevronRight, Eye, HelpCircle, Info, LifeBuoy, Lock, Mail,
-  Moon, Shield, Smartphone, Sun, User,
+  Moon, Shield, Smartphone, Sparkles, Sun, User,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '../../../lib/utils'
@@ -36,6 +36,19 @@ const settingsSections: SettingsSection[] = [
     icon: User,
     items: [
       { id: 'edit-profile', label: 'Edit Profile', icon: User, action: 'chevron', href: '/app/settings/edit-profile', iconBg: 'bg-[#EFEAFB]', iconColor: 'text-[#6B4A80]' },
+      {
+        id: 'profile-setup',
+        label: 'Profile Setup',
+        // The 4-step setup is a standalone route with no gate, so this is a
+        // plain link: it works whether the setup was finished, skipped, or
+        // never shown at all.
+        icon: Sparkles,
+        action: 'chevron',
+        href: '/onboarding',
+        description: 'Revisit the 4-step setup — interests, goals and visibility.',
+        iconBg: 'bg-[#EAF3EA]',
+        iconColor: 'text-[#5F7F52]',
+      },
       { id: 'change-password', label: 'Change Password', icon: Lock, action: 'chevron', href: '/app/settings/change-password', iconBg: 'bg-[#FBE7EC]', iconColor: 'text-[#A34A6B]' },
       { id: 'email', label: 'Email', icon: Mail, action: 'value', iconBg: 'bg-[#EFEAFB]', iconColor: 'text-[#6B4A80]' },
     ],

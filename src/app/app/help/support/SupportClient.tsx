@@ -53,7 +53,7 @@ export default function SupportPage() {
     setStatus('sent')
   }
 
-  const mailtoHref = `mailto:${CONTACT.supportEmail}?subject=${encodeURIComponent(
+  const mailtoHref = `mailto:${CONTACT.email}?subject=${encodeURIComponent(
     `[MindCircle support] ${subject.trim()}`,
   )}&body=${encodeURIComponent(
     `${message.trim()}${email.trim() ? `\n\nReply to: ${email.trim()}` : ''}`,
@@ -240,7 +240,7 @@ export default function SupportPage() {
               <ul className="mt-4 space-y-4 text-sm">
                 <li>
                   <a
-                    href={`mailto:${CONTACT.supportEmail}`}
+                    href={`mailto:${CONTACT.email}`}
                     className="flex items-start gap-2.5 group"
                   >
                     <Mail
@@ -249,7 +249,7 @@ export default function SupportPage() {
                     />
                     <span className="min-w-0">
                       <span className="block text-charcoal group-hover:text-plum transition-colors break-all">
-                        {CONTACT.supportEmail}
+                        {CONTACT.email}
                       </span>
                       <span className="text-xs text-warm-gray">General support</span>
                     </span>

@@ -37,9 +37,23 @@ const ROOM_ART = [
 ] as const
 
 /** Fades card art into the tint so there is no hard vertical seam. */
-const CARD_ART_FADE = {
-  maskImage: 'linear-gradient(to right, transparent 0%, black 45%)',
-  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 45%)',
+/**
+ * Room-card artwork fades on all four sides.
+ *
+ * Two axes are needed (horizontal *and* vertical), and a single `mask-image`
+ * cannot express both without `mask-composite` — whose browser support is
+ * uneven, and when unsupported the default `add` behaviour would union the
+ * two masks and make the rectangle fully opaque again. Nesting two masked
+ * elements multiplies them instead, which works everywhere.
+ */
+const CARD_ART_FADE_X = {
+  maskImage: 'linear-gradient(to right, transparent 0%, black 45%, black 92%, transparent 100%)',
+  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 45%, black 92%, transparent 100%)',
+} as const
+
+const CARD_ART_FADE_Y = {
+  maskImage: 'linear-gradient(to bottom, transparent 0%, black 30%, black 74%, transparent 100%)',
+  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 30%, black 74%, transparent 100%)',
 } as const
 
 type Story = {
@@ -430,14 +444,19 @@ export default function ConnectPage() {
                     )}
                   >
                     {/* themed art bleeding from the right edge */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={theme.art}
-                      alt=""
+                    <div
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-y-0 right-0 h-full w-[36%] object-cover object-right"
-                      style={CARD_ART_FADE}
-                    />
+                      className="pointer-events-none absolute inset-y-0 right-0 h-full w-[36%]"
+                      style={CARD_ART_FADE_X}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={theme.art}
+                        alt=""
+                        className="h-full w-full object-cover object-right"
+                        style={CARD_ART_FADE_Y}
+                      />
+                    </div>
                     <div className="relative z-10 min-w-0 flex-1">
                       <p className="truncate font-heading text-[16px] font-bold text-[#3D2A52]">{room.name}</p>
                       <p className="mt-0.5 line-clamp-1 text-[13px] text-charcoal/70">{roomDescription(room.name)}</p>

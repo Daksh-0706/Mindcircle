@@ -2,7 +2,7 @@ export const NAV_ITEMS = [
   { label: 'Home', href: '/app', icon: 'Home' },
   { label: 'Journal', href: '/app/journal', icon: 'BookOpen' },
   { label: 'Connect', href: '/app/connect', icon: 'Users' },
-  { label: 'Insights', href: '/app/insights', icon: 'BarChart3' },
+  { label: 'Discover', href: '/app/discover', icon: 'Compass' },
   { label: 'Chats', href: '/app/chats', icon: 'MessageCircle' },
 ] as const
 
@@ -10,6 +10,7 @@ export const SIDEBAR_ITEMS = [
   { label: 'Home', href: '/app', icon: 'Home' },
   { label: 'Journal', href: '/app/journal', icon: 'BookOpen' },
   { label: 'Connect', href: '/app/connect', icon: 'Users' },
+  { label: 'Discover', href: '/app/discover', icon: 'Compass' },
   { label: 'Insights', href: '/app/insights', icon: 'BarChart3' },
   { label: 'Chats', href: '/app/chats', icon: 'MessageCircle' },
   { label: 'Activities', href: '/app/activities', icon: 'Sparkles' },

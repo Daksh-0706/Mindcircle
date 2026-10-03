@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { asBoolean, asEnum, asText, asUuid, badRequest, readJson } from '@/lib/security'
 
 const MESSAGE_TYPES = ['text', 'image', 'audio'] as const
-const MESSAGE_MAX = 4000
+const MESSAGE_MAX = 10000
 
 /**
  * GET /api/chat/messages?room_id=<uuid>
@@ -62,7 +62,38 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ data })
+  return NextResponse.json({ data: await withSignedImages(supabase, data ?? []) })
+}
+
+/**
+ * Attach a short-lived signed URL to every row that carries an image.
+ *
+ * The bucket is private, so the stored value is only a storage path. Signing
+ * here — rather than in the browser — means the bucket can stay private and the
+ * URLs still expire on their own.
+ */
+async function withSignedImages(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: Record<string, unknown>[],
+) {
+  const paths = [
+    ...new Set(
+      rows
+        .map((r) => r.media_url)
+        .filter((p): p is string => typeof p === 'string' && p.length > 0),
+    ),
+  ]
+  if (paths.length === 0) return rows
+
+  const { data } = await supabase.storage.from('chat-media').createSignedUrls(paths, 3600)
+  const signed = new Map(
+    (data ?? []).map((f) => [f.path, f.signedUrl]),
+  )
+
+  return rows.map((r) => ({
+    ...r,
+    image_url: typeof r.media_url === 'string' ? (signed.get(r.media_url) ?? null) : null,
+  }))
 }
 
 export async function POST(request: Request) {
@@ -79,10 +110,17 @@ export async function POST(request: Request) {
   if (!body) return badRequest('Invalid request body.')
 
   const roomId = asUuid(body.room_id)
-  const content = asText(body.content, { min: 1, max: MESSAGE_MAX })
+  const content = asText(body.content, { min: 0, max: MESSAGE_MAX })
+  const mediaUrl = asText(body.media_url, { min: 1, max: 500 })
 
-  if (!roomId || !content) {
-    return badRequest('A valid room_id and message content are required.')
+  if (!roomId || (!content && !mediaUrl)) {
+    return badRequest('A valid room_id and either content or an image are required.')
+  }
+
+  // Only the sender's own folder may be attached, so nobody can point a message
+  // at an image they did not upload — or at any other path in the bucket.
+  if (mediaUrl && !mediaUrl.startsWith(`${user.id}/`)) {
+    return badRequest('That image does not belong to you.')
   }
 
   const { data, error } = await supabase
@@ -90,8 +128,11 @@ export async function POST(request: Request) {
     .insert([{
       room_id: roomId,
       sender_id: user.id,
-      content,
-      message_type: asEnum(body.message_type, MESSAGE_TYPES, 'text'),
+      content: content ?? '',
+      media_url: mediaUrl ?? null,
+      message_type: mediaUrl
+        ? ('image' as const)
+        : asEnum(body.message_type, MESSAGE_TYPES, 'text'),
       is_anonymous: asBoolean(body.is_anonymous, true),
     }])
     .select()
