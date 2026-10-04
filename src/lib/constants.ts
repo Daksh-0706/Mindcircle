@@ -31,7 +31,8 @@ export const MOOD_EMOJIS = [
 export const FEATURES = [
   {
     title: 'Private Journaling',
-    description: 'Write freely with end-to-end encryption. Your thoughts stay yours — always.',
+    description:
+      'Write freely in a journal locked to your account alone. Your thoughts stay yours — always.',
     icon: 'Lock',
     tile: 'bg-[#EDE4FB]',
     iconColor: 'text-plum',
