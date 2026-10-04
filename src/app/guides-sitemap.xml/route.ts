@@ -12,11 +12,16 @@ import { GUIDES } from "@/lib/guides";
  *
  * `/sitemap.xml` remains the canonical sitemap for everything else.
  */
-export const revalidate = 3600;
+export const revalidate = 86400;
+
+// `lastmod` used to be `new Date()` on every request, so the sitemap claimed
+// "everything changed an hour ago" forever. Google reacts to that by coming
+// back over and over and eventually ignoring the file. A day's granularity
+// is honest — these articles are not rewritten hourly — and it stops the
+// crawl churn.
+const lastModified = new Date().toISOString().slice(0, 10);
 
 export function GET() {
-  const lastModified = new Date().toISOString();
-
   const urls = ["/blog", ...GUIDES.map((guide) => `/blog/${guide.slug}`)]
     .map((path) => {
       const loc = `${SITE_URL}${path}`;
