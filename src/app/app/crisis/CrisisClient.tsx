@@ -132,42 +132,67 @@ export default function CrisisPage() {
     <>
     <div className="min-h-screen bg-cream pb-safe">
       <div className="relative min-h-screen overflow-hidden bg-[#FFF8F0]">
-        {/* Soft peach + lavender blob background */}
+        {/* Soft peach + lavender blob background.
+
+            The base wash is translucent, not a solid colour. It used to be an
+            opaque `linear-gradient(165deg, #FDF4EC …)`, and because this layer
+            begins partway down the page while everything above it is the plain
+            page cream (#FFF8F0), that one-stop difference drew a hard
+            horizontal line straight across the screen. A translucent base has
+            no edge to show: it simply tints whatever is behind it. */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
           style={{
+            /* This layer starts directly below the standalone header, so its
+               top edge lands right against the header's flat cream. A vertical
+               mask dissolves the first ~110px into that cream, which removes
+               the seam no matter which gradient stop sits nearest the top. */
+            maskImage: 'linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.35) 55px, black 110px)',
+            WebkitMaskImage:
+              'linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.35) 55px, black 110px)',
             background: `
               radial-gradient(circle at 12% 18%, rgba(244, 196, 176, 0.45) 0%, rgba(244, 196, 176, 0) 40%),
               radial-gradient(circle at 88% 30%, rgba(214, 196, 240, 0.40) 0%, rgba(214, 196, 240, 0) 42%),
               radial-gradient(circle at 20% 65%, rgba(233, 214, 244, 0.35) 0%, rgba(233, 214, 244, 0) 45%),
               radial-gradient(circle at 85% 85%, rgba(244, 204, 180, 0.35) 0%, rgba(244, 204, 180, 0) 45%),
-              linear-gradient(165deg, #FDF4EC 0%, #FBF0F4 50%, #F7EEF9 100%)
+              linear-gradient(165deg, rgba(255, 248, 240, 0) 0%, rgba(251, 240, 244, 0.55) 50%, rgba(247, 238, 249, 0.75) 100%)
             `,
           }}
         />
 
         {/* Hero background illustration (user-provided).
-            The radial mask feathers all four edges so the artwork dissolves
-            into the page background instead of ending on a hard rectangular
-            seam. The ellipse is nudged up so the heart stays fully opaque. */}
+            The artwork's own top edge is a pale pink band, and it butts directly
+            against the flat cream header, which drew a hard line across the
+            screen. Two nested wrappers each carry one mask, so the edges
+            feather independently: the outer one dissolves the artwork into the
+            header above it, the inner ellipse softens the sides and bottom. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 h-[440px] overflow-hidden sm:h-[540px]"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[440px] sm:h-[540px]"
           style={{
-            maskImage:
-              'radial-gradient(ellipse 82% 78% at 50% 42%, black 52%, rgba(0,0,0,0.35) 78%, transparent 100%)',
+            maskImage: 'linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) 60px, black 130px)',
             WebkitMaskImage:
-              'radial-gradient(ellipse 82% 78% at 50% 42%, black 52%, rgba(0,0,0,0.35) 78%, transparent 100%)',
+              'linear-gradient(to bottom, transparent 0, rgba(0,0,0,0.45) 60px, black 130px)',
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/crisis-hero.png"
-            alt=""
-            className="h-full w-full object-cover object-center"
-            style={{ objectPosition: 'center 42%' }}
-          />
+          <div
+            className="h-full w-full overflow-hidden"
+            style={{
+              maskImage:
+                'radial-gradient(ellipse 82% 78% at 50% 42%, black 52%, rgba(0,0,0,0.35) 78%, transparent 100%)',
+              WebkitMaskImage:
+                '-webkit-radial-gradient(ellipse 82% 78% at 50% 42%, black 52%, rgba(0,0,0,0.35) 78%, transparent 100%)',
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/crisis-hero.png"
+              alt=""
+              className="h-full w-full object-cover object-center"
+              style={{ objectPosition: 'center 42%' }}
+            />
+          </div>
         </div>
 
         <div className="relative mx-auto max-w-3xl px-4 py-5 sm:px-6 lg:px-8">

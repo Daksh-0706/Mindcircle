@@ -322,5 +322,5 @@ flowchart LR
 ```
 
 - Everything user-facing uses the **anon key + RLS** — no service-role key in the web app.
-- Migrations (`supabase_migration_*.sql`) run manually in the Supabase SQL Editor; they are idempotent.
+- Migrations live in [`supabase/migrations/`](../supabase/migrations) and run manually in the Supabase SQL Editor in numeric order; each one is idempotent. One-off data repairs are kept separately in [`supabase/maintenance/`](../supabase/maintenance) because they are not part of the schema. See [`docs/DATABASE.md`](DATABASE.md) for the table reference.
 - Counsellor directory is **static** (`src/lib/counsellors.ts`) — no DB table yet.

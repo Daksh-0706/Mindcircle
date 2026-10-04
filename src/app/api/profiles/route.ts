@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   // Only people who finished setup are worth showing in the directory.
   const { data, error } = await supabase
     .from('users')
-    .select('id, email, display_name, alias, location, bio, avatar_emoji, interests, goals, is_public, created_at')
+    .select('id, email, display_name, alias, pronouns, location, bio, avatar_emoji, interests, goals, is_public, created_at')
     .neq('id', user.id)
     .order('created_at', { ascending: false })
     .limit(MAX_LIMIT * 3)
@@ -111,6 +111,7 @@ export async function GET(request: Request) {
       name: displayName(p.display_name, p.email),
       avatar_emoji: p.avatar_emoji ?? '😊',
       location: p.location ?? '',
+      pronouns: p.pronouns ?? '',
       bio: p.bio ?? '',
       interests: p.interests ?? [],
       goals: p.goals ?? [],

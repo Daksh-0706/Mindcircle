@@ -12,6 +12,10 @@ import {
   EMAIL_AUTH_AVAILABLE,
   EMAIL_AUTH_UNAVAILABLE_MESSAGE,
 } from '@/lib/auth-availability'
+import {
+  GOOGLE_DIRECT_AUTH_AVAILABLE,
+  startGoogleDirectSignIn,
+} from '@/lib/auth/google-oauth'
 import { Logo } from '../../../components/common/Logo'
 import { AuthArt, AuthQuote, Flourish } from '../../../components/auth/AuthArt'
 
@@ -76,10 +80,24 @@ function LoginForm() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Google OAuth via Supabase — redirects to Google, comes back to /auth/callback.
+  // Google OAuth. Prefers our own Google client when NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  // is set, so the consent screen names this app's domain instead of
+  // Supabase's; falls back to the Supabase-hosted flow otherwise.
   const handleGoogleSignIn = async () => {
     setError('')
     setLoading(true)
+
+    if (GOOGLE_DIRECT_AUTH_AVAILABLE) {
+      try {
+        await startGoogleDirectSignIn(nextPath)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not start Google sign-in.')
+        setLoading(false)
+      }
+      // On success the browser navigates away to Google; nothing else to do.
+      return
+    }
+
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -88,7 +106,6 @@ function LoginForm() {
       setError(oauthError.message)
       setLoading(false)
     }
-    // On success the browser navigates away to Google; nothing else to do.
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

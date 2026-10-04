@@ -19,6 +19,7 @@ type Person = {
   name: string
   avatar_emoji: string
   location: string
+  pronouns: string
   bio: string
   interests: string[]
   goals: string[]
@@ -283,8 +284,16 @@ const viewable = true
                     {person.alias ?? person.name}
                   </button>
 
+                  {/* Location first, then pronouns as a plain value — no
+                      "pronouns:" label, so the card stays scannable. */}
                   <p className="mt-1 text-[11px] font-medium text-charcoal/60">
                     📍 {person.location || 'Somewhere near you'}
+                    {person.pronouns && (
+                      <>
+                        {' · '}
+                        <span className="text-charcoal/50">{person.pronouns}</span>
+                      </>
+                    )}
                   </p>
 
                   <p className="mt-2 line-clamp-2 flex-1 text-[12.5px] leading-5 text-charcoal/70">

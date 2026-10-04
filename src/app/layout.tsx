@@ -8,6 +8,19 @@ import {
   OG_IMAGE_PATH,
 } from '@/lib/seo'
 import { CookieNotice } from '@/components/common/CookieNotice'
+import StructuredData from '@/components/seo/StructuredData'
+import { organizationLd, webSiteLd, webApplicationLd } from '@/lib/seo-structured-data'
+
+/**
+ * Google Search Console ownership token.
+ *
+ * Search Console hands out a `google-site-verification` string that has to
+ * appear in the HTML head before the site can be indexed. It lives in an env
+ * var rather than in source so a code search or a public fork can't be used to
+ * claim someone else's Search Console property, and so rotating it needs no
+ * code change. Left unset, Next omits the tag entirely.
+ */
+const siteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -63,6 +76,9 @@ export const metadata: Metadata = {
     },
   },
   category: 'health',
+  ...(siteVerification
+    ? { verification: { google: siteVerification } }
+    : {}),
   formatDetection: { telephone: false, address: false, email: false },
   icons: {
     icon: [
@@ -104,6 +120,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen bg-cream text-charcoal font-body antialiased">
+          {/* Site-level structured data. Rendered on every page because it
+              describes the site, not any one page's content. */}
+          <StructuredData data={organizationLd()} />
+          <StructuredData data={webSiteLd()} />
+          <StructuredData data={webApplicationLd()} />
         <div className="grain-overlay min-h-screen">
           {children}
           <CookieNotice />

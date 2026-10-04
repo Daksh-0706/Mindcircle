@@ -91,6 +91,9 @@ export function AppLayout({
   // it to one request per browser, not one per navigation.
   useEffect(() => {
     if (typeof document === 'undefined') return
+    // Public help/crisis pages are reachable without a session, so /api/me
+    // would answer 401 and log two pointless failures on every visit.
+    if (standalone) return
     if (document.cookie.includes('mc_onboarded=')) return
 
     let active = true
@@ -112,7 +115,7 @@ export function AppLayout({
     return () => {
       active = false
     }
-  }, [router])
+  }, [router, standalone])
   const isTablet = useIsTablet()
   const isDesktop = useIsDesktop()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -213,7 +216,7 @@ function Shell({
             that fades into the background at its edges, so constraining it
             here would reintroduce the hard rectangle. Each page owns its own
             max-width and gutters. */}
-        <header className="sticky top-0 z-40 h-16 border-b border-warm-gray/20 bg-cream/85 backdrop-blur-md">
+        <header className="sticky top-0 z-40 h-16 bg-cream/85 backdrop-blur-md">
           <div className="mx-auto flex h-full max-w-6xl items-center gap-3 px-4 sm:px-6">
             <Link
               href="/"
@@ -226,9 +229,21 @@ function Shell({
               <Logo height={30} withWordmark />
             </Link>
           </div>
+          {/* A gradient fade instead of `border-b`. The hard 1px rule read as a
+              stray line across a phone screen, cutting the page in half for no
+              reason; this softens into the page instead. Absolute so it adds no
+              height and the h-16 offset below still clears the header. */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-full h-6 bg-gradient-to-b from-cream/70 to-transparent"
+          />
         </header>
-        {/* h-16 clears the sticky header so no page starts flush under it. */}
-        <main className="w-full pt-16">{children}</main>
+        {/* h-16 clears the sticky header so no page starts flush under it.
+            pb-24 on compact reserves room for the floating bottom nav. */}
+        <main className={cn('w-full pt-16', compact && 'pb-24')}>{children}</main>
+        {/* These routes are reachable without a session, so tapping an item
+            sends a guest to login — which is the right destination for it. */}
+        {compact && <BottomNav />}
       </div>
     )
   }
