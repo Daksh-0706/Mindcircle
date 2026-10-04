@@ -4,9 +4,13 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, CloudOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { authErrorMessage } from '@/lib/auth-errors'
+import {
+  EMAIL_AUTH_AVAILABLE,
+  EMAIL_AUTH_UNAVAILABLE_MESSAGE,
+} from '@/lib/auth-availability'
 import { Logo } from '../../../components/common/Logo'
 import { AuthArt, AuthQuote, Flourish } from '../../../components/auth/AuthArt'
 
@@ -70,6 +74,7 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!EMAIL_AUTH_AVAILABLE) return
     setError('')
     setLoading(true)
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -144,11 +149,14 @@ export default function SignupPage() {
           {/* Divider */}
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 h-px bg-warm-gray-lighter" />
-            <span className="text-xs text-warm-gray">or continue with email</span>
+            <span className="text-xs text-warm-gray">
+              {EMAIL_AUTH_AVAILABLE ? 'or continue with email' : 'email sign-up'}
+            </span>
             <div className="flex-1 h-px bg-warm-gray-lighter" />
           </div>
 
-          {/* Form */}
+          {EMAIL_AUTH_AVAILABLE ? (
+          /* Form */
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Full Name */}
             <div>
@@ -238,6 +246,24 @@ export default function SignupPage() {
               {loading ? 'Creating account…' : 'Create Account'} {!loading && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
+          ) : (
+            /* Signup cannot complete without confirmation email delivery, so
+               the form is replaced rather than left to dead-end on the OTP
+               screen. Google above is the working way in. */
+            <div className="flex items-start gap-3 rounded-2xl border border-warm-gray-lighter bg-white px-4 py-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream-dark text-warm-gray">
+                <CloudOff className="w-4 h-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-charcoal">
+                  Email sign-up is currently unavailable
+                </p>
+                <p className="mt-1 text-[13px] leading-6 text-warm-gray">
+                  {EMAIL_AUTH_UNAVAILABLE_MESSAGE}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Login link */}
           <p className="text-center text-sm text-warm-gray mt-6">

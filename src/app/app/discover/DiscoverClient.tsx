@@ -227,7 +227,10 @@ export default function DiscoverClient() {
               const accepted = person.connection === 'accepted'
               const sent = person.connection === 'outgoing' || person.connection === 'pending'
               const incoming = person.connection === 'incoming'
-              const viewable = accepted || person.is_public
+              // Everyone in the directory opens. A private profile opens in a locked form
+// (alias + avatar + "send a request"), which is the whole point of Discover —
+// it shows who is here before you decide who to connect to.
+const viewable = true
               // Alternates so the grid keeps the mockup's checkerboard rhythm.
               const solid = index % 2 === 0
               const working = busy === person.id
@@ -237,10 +240,8 @@ export default function DiscoverClient() {
                   key={person.id}
                   className="flex flex-col rounded-[18px] border border-warm-gray-lighter/60 bg-white p-4 shadow-[0_2px_12px_rgba(74,44,94,0.05)] transition-transform hover:-translate-y-0.5"
                 >
-                  {/* Tapping opens the profile for anyone whose account is
-                      public, or who we are already connected with. The API
-                      enforces the same rule, so this is convenience, not the
-                      gate. */}
+                  {/* Tapping always opens the profile. The API decides how much of it
+                      comes back — a private profile opens in a locked form. */}
                   <button
                     type="button"
                     onClick={() => viewable && router.push(`/app/profile/${person.id}`)}
@@ -268,10 +269,19 @@ export default function DiscoverClient() {
                   {/* Only the alias is shown. The display name is deliberately left out: two
                     people can share a name, and the alias is the one identity
                     that is guaranteed unique — showing both invited the exact
-                    confusion the alias exists to prevent. */}
-                  <p className="mt-3 truncate font-heading text-[15px] font-bold text-[#3D2A52]">
+                    confusion the alias exists to prevent.
+
+                    It is a button, not text: the name is what people aim for
+                    when they tap a card, and the avatar target above it is a
+                    56px circle they can easily miss. */}
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/app/profile/${person.id}`)}
+                    aria-label={`View ${person.alias ?? person.name}`}
+                    className="mt-3 -ml-1 max-w-full cursor-pointer truncate rounded px-1 text-left font-heading text-[15px] font-bold text-[#3D2A52] transition-colors hover:text-plum"
+                  >
                     {person.alias ?? person.name}
-                  </p>
+                  </button>
 
                   <p className="mt-1 text-[11px] font-medium text-charcoal/60">
                     📍 {person.location || 'Somewhere near you'}

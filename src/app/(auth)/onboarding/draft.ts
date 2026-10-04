@@ -1,6 +1,8 @@
 /** The values collected across the four setup steps. */
 export type Draft = {
   name: string
+  /** One of PRONOUNS, or '' for "rather not say". */
+  pronouns: string
   location: string
   bio: string
   avatar: string

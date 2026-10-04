@@ -206,7 +206,18 @@ export default function InsightsPage() {
                   </p>
                 ) : (
                   <>
-                    <MoodLineChart data={timeline} height={isMobile ? 200 : 280} labelEvery={labelEvery} />
+                    <MoodLineChart
+                      data={timeline}
+                      // The viewBox width must track the rendered width, or the
+                      // SVG scales the whole chart down: at a fixed 720 on a
+                      // 330px phone the chart rendered ~92px tall with 4px text.
+                      width={isMobile ? 360 : 720}
+                      height={isMobile ? 240 : 280}
+                      compact={isMobile}
+                      // Fewer date labels on a phone — at the desktop count
+                      // they collide once the chart is only ~330px wide.
+                      labelEvery={isMobile ? Math.max(1, Math.ceil(timeline.length / 4)) : labelEvery}
+                    />
                     <div className="mb-5 mt-4 h-px bg-warm-gray-lighter" />
                     {takeaway && (
                       <p className="text-sm leading-6 text-charcoal">
@@ -327,10 +338,16 @@ export default function InsightsPage() {
   )
 }
 
-/** Colors for a mood average: sage (good) → plum (okay) → terracotta (heavy). */
+/**
+ * Colors for a mood average: sage (good) → plum (okay) → terracotta (heavy).
+ *
+ * Thresholds are the same 1–10 bands the profile mood page and the API use
+ * (`good ≥ 7`, `neutral ≥ 5`), so a score cannot read "good" in one place and
+ * "okay" in another.
+ */
 function moodColor(avg: number) {
-  if (avg >= 4) return '#7B9E6B'
-  if (avg >= 3) return '#6B4A80'
+  if (avg >= 7) return '#7B9E6B'
+  if (avg >= 5) return '#6B4A80'
   return '#C45D3E'
 }
 
@@ -340,21 +357,31 @@ function moodColor(avg: number) {
  */
 function MoodLineChart({
   data,
+  width,
   height,
+  compact,
   labelEvery,
 }: {
   data: { day: Date; avg: number | null }[]
+  width: number
   height: number
+  /** Phone rendering: bigger type and dots, since the SVG no longer shrinks. */
+  compact?: boolean
   labelEvery: number
 }) {
-  const W = 720
+  const W = width
   const H = height
-  const PAD = { top: 30, right: 18, bottom: 30, left: 34 }
+  const PAD = compact
+    ? { top: 24, right: 10, bottom: 26, left: 26 }
+    : { top: 30, right: 18, bottom: 30, left: 34 }
   const iw = W - PAD.left - PAD.right
   const ih = H - PAD.top - PAD.bottom
 
+  const font = compact ? 11 : 9.5
+  const dotR = compact ? 5 : 4.5
+
   const x = (i: number) => PAD.left + (data.length <= 1 ? iw / 2 : (i / (data.length - 1)) * iw)
-  const y = (v: number) => PAD.top + ih - ((v - 1) / 4) * ih // score 1..5
+  const y = (v: number) => PAD.top + ih - ((v - 1) / 9) * ih // score 1..10
 
   const points = data
     .map((t, i) => ({ ...t, i, x: x(i), y: t.avg !== null ? y(t.avg) : null }))
@@ -364,19 +391,28 @@ function MoodLineChart({
   // Smooth curve through real points using Catmull-Rom → cubic Bézier.
   // (Plain computation — the chart re-renders only when data changes, so
   // memoization is unnecessary and React Compiler dislikes `real` deps.)
+  //
+  // The control points are clamped to the segment they belong to. Raw
+  // Catmull-Rom overshoots: around a sharp dip it sends the curve *below* the
+  // lowest value, which drew a dip that hung under the "1" gridline. Clamping
+  // keeps the curve monotone between any two points, so it can never leave
+  // the 1–10 band.
   const linePath = (() => {
     if (real.length === 0) return ''
     if (real.length === 1) return `M${real[0].x.toFixed(1)},${real[0].y.toFixed(1)}`
+    const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi)
     let d = `M${real[0].x.toFixed(1)},${real[0].y.toFixed(1)}`
     for (let i = 0; i < real.length - 1; i++) {
       const p0 = real[Math.max(0, i - 1)]
       const p1 = real[i]
       const p2 = real[i + 1]
       const p3 = real[Math.min(real.length - 1, i + 2)]
+      const lo = Math.min(p1.y, p2.y)
+      const hi = Math.max(p1.y, p2.y)
       const c1x = p1.x + (p2.x - p0.x) / 6
-      const c1y = p1.y + (p2.y - p0.y) / 6
+      const c1y = clamp(p1.y + (p2.y - p0.y) / 6, lo, hi)
       const c2x = p2.x - (p3.x - p1.x) / 6
-      const c2y = p2.y - (p3.y - p1.y) / 6
+      const c2y = clamp(p2.y - (p3.y - p1.y) / 6, lo, hi)
       d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`
     }
     return d
@@ -387,7 +423,7 @@ function MoodLineChart({
       ? `${linePath} L${real[real.length - 1].x.toFixed(1)},${(PAD.top + ih).toFixed(1)} L${real[0].x.toFixed(1)},${(PAD.top + ih).toFixed(1)} Z`
       : ''
 
-  const gridLines = [1, 2, 3, 4, 5]
+  const gridLines = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Mood timeline chart">
@@ -401,9 +437,9 @@ function MoodLineChart({
             y2={y(v)}
             stroke="#E8E0D8"
             strokeWidth={1}
-            strokeDasharray={v === 3 ? '0' : '3 4'}
+            strokeDasharray={v === 5 ? '0' : '3 4'}
           />
-          <text x={PAD.left - 8} y={y(v) + 3.5} textAnchor="end" fontSize={9.5} fill="#B0B0B0">
+          <text x={PAD.left - 7} y={y(v) + font / 3} textAnchor="end" fontSize={font} fill="#B0B0B0">
             {v}
           </text>
         </g>
@@ -419,13 +455,13 @@ function MoodLineChart({
       </defs>
 
       {/* Line */}
-      {real.length > 1 && <path d={linePath} fill="none" stroke="#6B4A80" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
+      {real.length > 1 && <path d={linePath} fill="none" stroke="#6B4A80" strokeWidth={compact ? 3 : 2.5} strokeLinejoin="round" strokeLinecap="round" />}
 
       {/* Dots + value labels on real check-in days */}
       {real.map((p) => (
         <g key={p.day.toISOString()}>
-          <circle cx={p.x} cy={p.y} r={4.5} fill={moodColor(p.avg)} stroke="#fff" strokeWidth={2} />
-          <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize={9.5} fontWeight={600} fill={moodColor(p.avg)}>
+          <circle cx={p.x} cy={p.y} r={dotR} fill={moodColor(p.avg)} stroke="#fff" strokeWidth={2} />
+          <text x={p.x} y={p.y - dotR - 5} textAnchor="middle" fontSize={font} fontWeight={600} fill={moodColor(p.avg)}>
             {p.avg.toFixed(1)}
           </text>
         </g>
@@ -439,7 +475,7 @@ function MoodLineChart({
             x={p.x}
             y={H - 8}
             textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}
-            fontSize={9.5}
+            fontSize={font}
             fill="#80698A"
           >
             {formatShortDate(p.day)}

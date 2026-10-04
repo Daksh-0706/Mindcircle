@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { asEnum, asText, badRequest, readJson, serverError } from '@/lib/security'
+import { PRONOUNS } from '@/lib/profile-options'
 
 const AVATARS = [
   // Profile setup (step 1)
@@ -35,7 +36,7 @@ export async function GET() {
   // that used to turn every fresh signup into a wall of 500s.
   const { data: profile, error } = await supabase
     .from('users')
-    .select('id, email, anonymous_id, avatar_emoji, settings, display_name, alias, location, bio, interests, goals, is_public, share_moods, onboarded_at')
+    .select('id, email, anonymous_id, avatar_emoji, settings, display_name, alias, pronouns, location, bio, interests, goals, is_public, share_moods, onboarded_at')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -60,7 +61,7 @@ export async function GET() {
 /**
  * PATCH /api/me — update the profile row.
  * Body: {
- *   display_name?, alias?, location?, bio?, interests?, goals?,
+ *   display_name?, alias?, pronouns?, location?, bio?, interests?, goals?,
  *   is_public?, avatar_emoji?, settings?
  * }
  *
@@ -116,6 +117,19 @@ export async function PATCH(request: Request) {
       const name = asText(body.display_name, { min: 1, max: 60 })
       if (!name) return badRequest('Please provide a name up to 60 characters.')
       updates.display_name = name
+    }
+  }
+
+  if (body.pronouns !== undefined) {
+    // Only the options the UI offers are accepted. Free text here would mean a
+    // profile row can carry anything, and this value is rendered next to the
+    // display name on other people's profiles.
+    if (body.pronouns === null || body.pronouns === '') {
+      updates.pronouns = null
+    } else {
+      const pronouns = asEnum(body.pronouns, PRONOUNS)
+      if (!pronouns) return badRequest('Please pick pronouns from the list.')
+      updates.pronouns = pronouns
     }
   }
 
@@ -246,7 +260,7 @@ export async function PATCH(request: Request) {
     .from('users')
     .update(updates)
     .eq('id', user.id)
-    .select('id, email, anonymous_id, avatar_emoji, settings, display_name, alias, location, bio, interests, goals, is_public, share_moods, onboarded_at')
+    .select('id, email, anonymous_id, avatar_emoji, settings, display_name, alias, pronouns, location, bio, interests, goals, is_public, share_moods, onboarded_at')
     .single()
 
   if (error) {

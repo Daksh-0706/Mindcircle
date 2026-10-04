@@ -10,6 +10,7 @@ import {
   FileText,
   Heart,
   Leaf,
+  Lock,
   MapPin,
   Quote,
   Sparkles,
@@ -25,6 +26,7 @@ type Person = {
   id: string
   alias: string | null
   name: string
+  pronouns: string
   avatar_emoji: string
   location: string
   bio: string
@@ -33,6 +35,12 @@ type Person = {
   personality: string[]
   note: string
   joined: string
+  /**
+   * Private profile we are not connected with. The API sends the alias and
+   * avatar only, so this screen shows a "connect to view" notice instead of
+   * the sections below — there is nothing behind them to render.
+   */
+  locked?: boolean
 }
 
 /** Section wrapper: lavender icon, bold title, then whatever belongs under it. */
@@ -96,7 +104,24 @@ export default function ProfileAboutClient() {
         return res.json()
       })
       .then((json) => {
-        if (active) setPerson(json.person as Person)
+        const raw = json.person as Partial<Person>
+        if (active) {
+          setPerson({
+            id: raw.id ?? personId,
+            alias: raw.alias ?? null,
+            name: raw.name ?? '',
+            pronouns: raw.pronouns ?? '',
+            avatar_emoji: raw.avatar_emoji ?? '😊',
+            location: raw.location ?? '',
+            bio: raw.bio ?? '',
+            interests: raw.interests ?? [],
+            goals: raw.goals ?? [],
+            personality: raw.personality ?? [],
+            note: raw.note ?? '',
+            joined: raw.joined ?? '',
+            locked: Boolean(raw.locked),
+          })
+        }
       })
       .catch((e) => {
         if (active) {
@@ -171,7 +196,30 @@ export default function ProfileAboutClient() {
               Find people
             </Link>
           </div>
-        ) : (
+        ) : person.locked ? (
+            /* Locked profile: this screen exists to show their details, and
+               there are none. Say why, and send them back to the one action
+               that would unlock it. */
+            <div className="rounded-[22px] bg-white p-8 text-center shadow-[0_8px_28px_rgba(74,44,94,0.07)]">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F0EBFC] text-plum">
+                <Lock size={22} aria-hidden="true" />
+              </span>
+              <p className="mt-4 font-heading text-lg font-bold text-charcoal">
+                This is a private profile
+              </p>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-charcoal/60">
+                {person.alias ?? person.name} has kept their details private. Send a
+                connection request to view their profile.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push(`/app/profile/${person.id}`)}
+                className="mt-5 inline-flex rounded-full bg-plum px-6 py-3 text-sm font-bold text-white"
+              >
+                Send connection request
+              </button>
+            </div>
+          ) : (
           <>
             {/* ── Identity card ─────────────────────────────── */}
             <section className="rounded-[22px] bg-white p-5 shadow-[0_8px_28px_rgba(74,44,94,0.07)] sm:p-6">
@@ -192,7 +240,7 @@ export default function ProfileAboutClient() {
                     {person.alias ?? person.name}
                   </h2>
                   <p className="mt-0.5 truncate text-[14px] text-charcoal/55">
-                    {person.name}
+                    {[person.name, person.pronouns].filter(Boolean).join(' · ')}
                   </p>
                   {person.bio && (
                     <p className="mt-2 inline-block max-w-full truncate rounded-[14px] rounded-br-[4px] bg-[#F1EDFC] px-3.5 py-2 text-[13px] font-semibold text-[#4A2C5E]">

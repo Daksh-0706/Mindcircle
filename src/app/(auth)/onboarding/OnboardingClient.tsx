@@ -84,6 +84,7 @@ export default function OnboardingClient() {
   const [error, setError] = useState('')
   const [draft, setDraft] = useState<Draft>({
     name: '',
+    pronouns: '',
     location: '',
     bio: '',
     avatar: '🌱',
@@ -126,6 +127,8 @@ export default function OnboardingClient() {
                 (typeof json.user?.fullName === 'string' ? json.user.fullName : '') ||
                 prev.name,
               avatar: profile.avatar_emoji || prev.avatar,
+              pronouns:
+                (pick(profile.pronouns, 'pronouns') as string) || prev.pronouns,
               location: (pick(profile.location, 'location') as string) || prev.location,
               bio: (pick(profile.bio, 'bio') as string) || prev.bio,
               isPublic:
@@ -171,6 +174,7 @@ export default function OnboardingClient() {
         body: JSON.stringify({
           avatar_emoji: draft.avatar,
           display_name: draft.name.trim(),
+          pronouns: draft.pronouns,
           location: draft.location.trim(),
           bio: draft.bio.trim(),
           is_public: draft.isPublic,
@@ -322,7 +326,7 @@ export default function OnboardingClient() {
           </div>
 
           {/* ── Card ──────────────────────────────────────── */}
-          <main className="flex min-h-0 flex-1 flex-col rounded-[26px] border border-white/70 bg-white/90 p-5 shadow-[0_24px_60px_rgba(74,44,94,0.12)] backdrop-blur-sm sm:p-6 lg:overflow-y-auto lg:p-7">
+          <main className="mc-card flex min-h-0 flex-1 flex-col rounded-[26px] border border-white/70 bg-white/90 p-5 shadow-[0_24px_60px_rgba(74,44,94,0.12)] backdrop-blur-sm sm:p-6 lg:overflow-y-auto lg:p-7">
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}
@@ -332,15 +336,17 @@ export default function OnboardingClient() {
                 exit="exit"
                 transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
               >
-                <p className="text-[13px] font-semibold text-[#8C88AE]">
+                <p className="mc-step-label text-[13px] font-semibold text-[#8C88AE]">
                   Step {step + 1} of {STEPS.length}
                 </p>
-                <h1 className="mt-1.5 font-heading text-[26px] font-extrabold leading-[1.15] tracking-tight text-[#241B4F] sm:text-[34px]">
+                <h1 className="mc-step-heading mt-1.5 font-heading text-[26px] font-extrabold leading-[1.15] tracking-tight text-[#241B4F] sm:text-[34px]">
                   {config.heading(draft)}
                 </h1>
-                <p className="mt-2 max-w-xl text-[14px] leading-5 text-[#6E6A8C]">{config.intro}</p>
+                <p className="mc-step-intro mt-2 max-w-xl text-[14px] leading-5 text-[#6E6A8C]">
+                  {config.intro}
+                </p>
 
-                <div className="mt-5">{renderStep()}</div>
+                <div className="mc-step-body mt-5">{renderStep()}</div>
               </motion.div>
             </AnimatePresence>
 
@@ -351,7 +357,7 @@ export default function OnboardingClient() {
             )}
 
             {/* ── Actions ─────────────────────────────────── */}
-            <div className="mt-6 flex items-center justify-between gap-3">
+            <div className="mc-step-actions mt-6 flex items-center justify-between gap-3">
               {step > 0 ? (
                 <button
                   type="button"
@@ -370,7 +376,7 @@ export default function OnboardingClient() {
                   type="button"
                   onClick={save}
                   disabled={saving}
-                  className="inline-flex min-w-[176px] items-center justify-center gap-2 rounded-2xl bg-[#241B4F] px-7 py-3 text-[14.5px] font-bold text-white transition-colors hover:bg-[#1B1540] disabled:opacity-60"
+                  className="inline-flex min-w-[176px] items-center justify-center gap-2 rounded-2xl bg-[#241B4F] px-7 py-2.5 text-[14.5px] font-bold text-white transition-colors hover:bg-[#1B1540] disabled:opacity-60 lg:py-2"
                 >
                   {saving ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : null}
                   {saving ? 'Saving…' : 'Finish'}
@@ -381,7 +387,7 @@ export default function OnboardingClient() {
                   type="button"
                   onClick={() => goTo(step + 1)}
                   disabled={!canContinue}
-                  className="inline-flex min-w-[176px] items-center justify-center gap-2 rounded-2xl bg-[#241B4F] px-7 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-[#1B1540] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-w-[176px] items-center justify-center gap-2 rounded-2xl bg-[#241B4F] px-7 py-3 text-[15px] font-bold text-white transition-colors hover:bg-[#1B1540] disabled:cursor-not-allowed disabled:opacity-40 lg:py-2.5"
                 >
                   Next <ArrowRight size={17} aria-hidden="true" />
                 </button>

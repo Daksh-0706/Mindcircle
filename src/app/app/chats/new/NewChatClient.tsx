@@ -224,23 +224,29 @@ export default function NewChatClient() {
                   key={conn.id}
                   className="flex min-w-0 items-center gap-3 rounded-[20px] border border-warm-gray-lighter/60 bg-white p-3 pr-3 sm:gap-3.5 sm:pr-4"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EFEAFB]">
-                    <NotoEmoji emoji={person.avatar_emoji} size={21} />
-                  </span>
-                  <span className="min-w-0 flex-1 overflow-hidden">
-                    <span className="block truncate text-[15px] font-bold text-charcoal">
-                      {person.name}
+                  <Link
+                    href={`/app/profile/${person.id}`}
+                    aria-label={`View ${person.name}`}
+                    className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden transition-opacity hover:opacity-80 sm:gap-3.5"
+                  >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EFEAFB]">
+                      <NotoEmoji emoji={person.avatar_emoji} size={21} />
                     </span>
-                    <span className="block truncate text-[12.5px] text-charcoal/65">
-                      {accepted
-                        ? person.interests.length
-                          ? `Into ${person.interests.slice(0, 2).join(', ')}`
-                          : 'Connected'
-                        : conn.direction === 'incoming'
-                          ? 'Wants to connect'
-                          : 'Request sent'}
+                    <span className="min-w-0 flex-1 overflow-hidden">
+                      <span className="block truncate text-[15px] font-bold text-charcoal">
+                        {person.name}
+                      </span>
+                      <span className="block truncate text-[12.5px] text-charcoal/65">
+                        {accepted
+                          ? person.interests.length
+                            ? `Into ${person.interests.slice(0, 2).join(', ')}`
+                            : 'Connected'
+                          : conn.direction === 'incoming'
+                            ? 'Wants to connect'
+                            : 'Request sent'}
+                      </span>
                     </span>
-                  </span>
+                  </Link>
                   {accepted ? (
                     <Link
                       href={`/app/chat/${person.id}`}

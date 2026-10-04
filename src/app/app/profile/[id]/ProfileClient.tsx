@@ -7,6 +7,7 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  Lock,
   MessageCircle,
   Shield,
   Sparkles,
@@ -25,12 +26,19 @@ type Person = {
   id: string
   alias: string | null
   name: string
+  pronouns: string
   avatar_emoji: string
   location: string
   bio: string
   interests: string[]
   goals: string[]
   is_public: boolean
+  /**
+   * True when this is a private profile we are not connected with. The API
+   * then sends the alias and avatar only — every other field is absent, so the
+   * detail screens below are simply not rendered.
+   */
+  locked: boolean
   share_moods: boolean
   connected: boolean
   joined: string
@@ -119,14 +127,33 @@ export default function ProfileClient() {
     try {
       const res = await fetch(`/api/profile/${encodeURIComponent(personId)}`)
       if (res.status === 404) {
-        // Either they do not exist, they are private and we are not connected,
-        // or we blocked them. All three read the same to the caller on purpose.
+        // Either they do not exist, or we blocked them. A private profile is
+        // no longer one of these — it opens in a locked form.
         setError('This profile is not available.')
         return
       }
       if (!res.ok) throw new Error('Could not load this profile.')
       const json = await res.json()
-      setPerson(json.person as Person)
+      const raw = json.person as Partial<Person>
+      // The locked payload is deliberately partial, so the fields the screen
+      // below reads are filled with empty values here rather than crashing on
+      // undefined.
+      setPerson({
+        id: raw.id ?? personId,
+        alias: raw.alias ?? null,
+        name: raw.name ?? '',
+        pronouns: raw.pronouns ?? '',
+        avatar_emoji: raw.avatar_emoji ?? '😊',
+        location: raw.location ?? '',
+        bio: raw.bio ?? '',
+        interests: raw.interests ?? [],
+        goals: raw.goals ?? [],
+        is_public: Boolean(raw.is_public),
+        locked: Boolean(raw.locked),
+        share_moods: Boolean(raw.share_moods),
+        connected: Boolean(raw.connected),
+        joined: raw.joined ?? '',
+      })
       setError('')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
@@ -236,15 +263,25 @@ export default function ProfileClient() {
                   <NotoEmoji emoji={person.avatar_emoji} size={64} />
                 </span>
                 {/* Presence dot. Community members have no live presence signal
-                    yet, so it marks membership rather than "online right now". */}
-                <span className="absolute bottom-1 right-3 h-6 w-6 rounded-full border-4 border-white bg-[#2E9E4F]" />
+                    yet, so it marks membership rather than "online right now".
+                    A locked profile has nothing to show, so the dot becomes a
+                    padlock — the badge is the whole message. */}
+                {person.locked ? (
+                  <span className="absolute bottom-1 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#EFEAFB] text-plum ring-4 ring-white">
+                    <Lock size={17} aria-hidden="true" />
+                  </span>
+                ) : (
+                  <span className="absolute bottom-1 right-3 h-6 w-6 rounded-full border-4 border-white bg-[#2E9E4F]" />
+                )}
               </span>
 
               <h1 className="mt-5 font-heading text-[28px] font-extrabold leading-tight text-charcoal">
                 {person.alias ?? person.name}
               </h1>
               <p className="mt-1 text-[15px] text-charcoal/55">
-                {person.bio || 'Mindcircle user'}
+                {person.locked
+                  ? 'Mindcircle user'
+                  : person.pronouns || person.bio || 'Mindcircle user'}
               </p>
             </section>
 
@@ -256,7 +293,32 @@ export default function ProfileClient() {
 
             {/* ── Actions ──────────────────────────────────── */}
             <section className="mt-7 grid grid-cols-2 gap-3">
-              {person.connected ? (
+              {person.locked ? (
+                // Locked profile: the only two things left to do are ask to
+                // connect, or wait. Messaging is offered but disabled, so the
+                // design's second tile is not a dead control.
+                <>
+                  <button
+                    type="button"
+                    onClick={connect}
+                    disabled={requesting}
+                    className="flex flex-col items-center gap-2 rounded-[20px] bg-plum px-3 py-5 text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+                  >
+                    <UserPlus size={24} aria-hidden="true" />
+                    <span className="text-center text-[13px] font-bold leading-4">
+                      {requesting ? 'Sending…' : 'Send connection request'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="flex flex-col items-center gap-2 rounded-[20px] bg-[#F1EDFC] px-3 py-5 text-charcoal/45"
+                  >
+                    <MessageCircle size={24} aria-hidden="true" />
+                    <span className="text-center text-[13px] font-bold leading-4">Message</span>
+                  </button>
+                </>
+              ) : person.connected ? (
                 <Link
                   href={`/app/chat/${person.id}`}
                   className="flex flex-col items-center gap-2 rounded-[20px] bg-[#EFEAFB] px-4 py-5 text-plum transition-transform hover:-translate-y-0.5"
@@ -279,6 +341,9 @@ export default function ProfileClient() {
                   </span>
                 </button>
               )}
+              {/* Not shown while locked: there is no connection to remove, and a
+                  permanently disabled third tile would just add noise. */}
+              {!person.locked && (
               <button
                 type="button"
                 onClick={removeConnection}
@@ -290,12 +355,32 @@ export default function ProfileClient() {
                   {removing ? 'Removing…' : person.connected ? 'Remove connection' : 'Not connected'}
                 </span>
               </button>
+              )}
             </section>
+
+            {/* ── Private-profile notice ─────────────────────── */}
+            {person.locked && (
+              <section className="mt-4 flex items-start gap-4 rounded-[20px] bg-[#F1EDFC] px-5 py-4 sm:px-6">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-plum">
+                  <Lock size={20} aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-heading text-[16px] font-bold text-charcoal">
+                    This is a private profile
+                  </p>
+                  <p className="mt-1 text-[13.5px] leading-6 text-charcoal/60">
+                    Send a connection request to view their profile and interact with them.
+                  </p>
+                </div>
+              </section>
+            )}
 
             {/* ── Current mood ─────────────────────────────── */}
             {/* Moods are private journal data, so nothing is shown here. The
                 card exists to mirror the design and to say so plainly, rather
-                than leaving a gap that looks like something failed to load. */}
+                than leaving a gap that looks like something failed to load.
+                While locked there is nothing to disclaim, so it is dropped. */}
+            {!person.locked && (
             <section className="mt-4 rounded-[20px] bg-[#F1EDFC] px-5 py-4 sm:px-6">
               <p className="flex items-center gap-2 text-[13px] font-bold text-charcoal/50">
                 <Sparkles size={16} className="text-plum" aria-hidden="true" />
@@ -305,8 +390,12 @@ export default function ProfileClient() {
                 Kept private — only you can see your own.
               </p>
             </section>
+            )}
 
             {/* ── About ────────────────────────────────────── */}
+            {/* Hidden while locked: this is the screen that would leak bio,
+                location, interests and goals, and its API sends none of them. */}
+            {!person.locked && (
             <section className="mt-4 overflow-hidden rounded-[20px] bg-white shadow-[0_8px_28px_rgba(74,44,94,0.07)]">
               <Link
                 href={`/app/profile/${person.id}/about`}
@@ -354,6 +443,7 @@ export default function ProfileClient() {
                 )}
               </div>
             </section>
+            )}
 
             {/* ── Safety ───────────────────────────────────── */}
             {/* Report is a placeholder until moderation tooling exists. Block
@@ -361,6 +451,9 @@ export default function ProfileClient() {
                 sharing their trends — the API 404s otherwise, so a dead link
                 is not possible here. */}
             <section className="mt-4 overflow-hidden rounded-[20px] bg-white shadow-[0_8px_28px_rgba(74,44,94,0.07)]">
+              {/* Mood trends are opt-in *and* connection-gated, so the link has
+                  nothing to offer a locked profile. */}
+              {!person.locked && (
               <Link
                 href={`/app/profile/${person.id}/mood`}
                 className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-plum/[0.03] sm:px-6"
@@ -380,7 +473,10 @@ export default function ProfileClient() {
                 </span>
                 <ChevronRight size={20} className="shrink-0 text-charcoal/30" aria-hidden="true" />
               </Link>
+              )}
+              {!person.locked && (
               <div className="mx-5 h-px bg-warm-gray-lighter/60 sm:mx-6" />
+              )}
               <Row
                 icon={<Shield size={20} />}
                 title="Report"

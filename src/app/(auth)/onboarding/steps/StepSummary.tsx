@@ -82,6 +82,9 @@ export default function StepSummary({ draft, onEdit }: StepSummaryProps) {
             <p className="truncate font-heading text-[20px] font-extrabold text-[#241B4F]">
               {draft.name || 'You'}
             </p>
+            {draft.pronouns && (
+              <p className="mt-0.5 text-[13px] text-[#5B5780]">{draft.pronouns}</p>
+            )}
             {draft.location && (
               <p className="mt-1 flex items-center gap-1.5 text-[13px] text-[#7B7799]">
                 <MapPin size={14} aria-hidden="true" /> {draft.location}

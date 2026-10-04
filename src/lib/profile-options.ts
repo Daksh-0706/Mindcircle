@@ -19,6 +19,22 @@ export const ONBOARDING_AVATARS: { emoji: string; disc: string }[] = [
   { emoji: '🐱', disc: '#FBF1DC' },
 ]
 
+/**
+ * Pronoun options offered on step 1 and in Settings → Edit Profile.
+ *
+ * The database column is free text (see supabase_migration_pronouns.sql) so a
+ * value outside this list is still storable; this is the closed set the UI
+ * offers, plus an empty choice for people who would rather not say.
+ */
+export const PRONOUNS = [
+  'He/Him',
+  'She/Her',
+  'They/Them',
+  'He/They',
+  'She/They',
+  'Prefer not to say',
+] as const
+
 export type Interest = { label: string; emoji: string; disc: string }
 
 export const INTERESTS: Interest[] = [

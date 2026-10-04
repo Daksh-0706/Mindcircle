@@ -10,13 +10,16 @@ import { displayName } from '@/app/api/profiles/route'
  *   - they made their account public (users.is_public), or
  *   - you are connected with them.
  *
- * The check lives here rather than in the UI because a profile id is guessable
- * in practice — it comes out of the directory — so a client-side gate would
- * stop the tap but not the fetch.
+ * When neither holds the profile is still returned, but stripped down to the
+ * identity the directory already shows (alias + avatar) plus `locked: true`.
+ * The person is discoverable, so hiding them behind a 404 would be theatre —
+ * what is protected is their bio, location, interests, goals and moods, and
+ * none of those cross the wire. Only a block produces a real 404, because then
+ * the person must become genuinely invisible.
  *
- * 404 (not 403) when neither holds: from the caller's side a profile they may
- * not see and a profile that does not exist are the same fact, and saying
- * otherwise would confirm that a private person exists at all.
+ * The visibility check lives here rather than in the UI because a profile id is
+ * guessable in practice — it comes out of the directory — so a client-side
+ * gate would stop the tap but not the fetch.
  */
 export async function GET(
   _request: Request,
@@ -64,7 +67,7 @@ export async function GET(
 
   const { data: person, error } = await supabase
     .from('users')
-    .select('id, email, display_name, alias, avatar_emoji, location, bio, interests, goals, personality, note, is_public, share_moods, created_at')
+    .select('id, email, display_name, alias, pronouns, avatar_emoji, location, bio, interests, goals, personality, note, is_public, share_moods, created_at')
     .eq('id', personId)
     .maybeSingle()
 
@@ -75,9 +78,20 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Private profile with no accepted connection: not viewable.
+  // Private profile with no accepted connection: identify them, reveal nothing
+  // else. The client renders the "send a request to view" screen from this.
   if (!person.is_public && !link) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({
+      person: {
+        id: person.id,
+        alias: person.alias ?? null,
+        name: displayName(person.display_name, person.email),
+        avatar_emoji: person.avatar_emoji ?? '😊',
+        is_public: false,
+        locked: true,
+        connected: false,
+      },
+    })
   }
 
   return NextResponse.json({
@@ -85,6 +99,7 @@ export async function GET(
       id: person.id,
       alias: person.alias ?? null,
       name: displayName(person.display_name, person.email),
+      pronouns: person.pronouns ?? '',
       avatar_emoji: person.avatar_emoji ?? '😊',
       location: person.location ?? '',
       bio: person.bio ?? '',
@@ -93,6 +108,7 @@ export async function GET(
       personality: person.personality ?? [],
       note: person.note ?? '',
       is_public: person.is_public ?? false,
+      locked: false,
       // Whether the row opens the mood insights screen. The API enforces the
       // opt-in itself; this only lets the UI word the link honestly.
       share_moods: Boolean(person.share_moods) && Boolean(link),

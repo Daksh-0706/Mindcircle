@@ -2,7 +2,8 @@
 
 import { Camera, Globe, Lock, MapPin } from 'lucide-react'
 import NotoEmoji from '@/components/ui/NotoEmoji'
-import { ONBOARDING_AVATARS } from '@/lib/profile-options'
+import { Select } from '@/components/ui/Select'
+import { ONBOARDING_AVATARS, PRONOUNS } from '@/lib/profile-options'
 import { cn } from '@/lib/utils'
 import type { Draft, DraftPatch } from '../draft'
 
@@ -23,13 +24,11 @@ function VisibilityOption({
   onSelect,
   icon,
   title,
-  hint,
 }: {
   active: boolean
   onSelect: () => void
   icon: React.ReactNode
   title: string
-  hint: string
 }) {
   return (
     <button
@@ -38,7 +37,7 @@ function VisibilityOption({
       aria-checked={active}
       onClick={onSelect}
       className={cn(
-        'flex items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all',
+        'flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all',
         active
           ? 'border-[#6C4CE0] bg-white ring-2 ring-[#6C4CE0]/20'
           : 'border-[#E4E2F0] bg-white/60 hover:border-[#C9C3E8]',
@@ -57,14 +56,45 @@ function VisibilityOption({
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block font-heading text-[13.5px] font-bold text-[#241B4F]">{title}</span>
-        <span className="mt-0.5 block text-[12px] leading-[18px] text-[#7B7799]">{hint}</span>
+        <span className="block font-heading text-[13.5px] font-bold leading-tight text-[#241B4F]">
+          {title}
+        </span>
       </span>
     </button>
   )
 }
 
-/** Step 1 — name, location, a short bio, visibility and the emoji avatar. */
+/**
+ * Pronoun picker.
+ *
+ * Uses the shared Select rather than a native <select>: the native menu paints
+ * itself in OS chrome, which looked nothing like the rest of the setup flow.
+ * The menu is portalled, so opening it cannot grow or scroll this step.
+ */
+function PronounSelect({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (next: string) => void
+}) {
+  return (
+    <div className={fieldBox}>
+      <span className={fieldLabel}>Pronouns</span>
+      <Select
+        className="mt-1"
+        size="field"
+        ariaLabel="Pronouns"
+        placeholder="Select pronouns"
+        options={PRONOUNS}
+        value={value}
+        onChange={onChange}
+      />
+    </div>
+  )
+}
+
+/** Step 1 — name, pronouns, location, a short bio, visibility and the avatar. */
 export default function StepProfile({ draft, patch }: StepProfileProps) {
   const shuffleAvatar = () => {
     const index = ONBOARDING_AVATARS.findIndex((a) => a.emoji === draft.avatar)
@@ -124,18 +154,29 @@ export default function StepProfile({ draft, patch }: StepProfileProps) {
         </div>
       </div>
 
-      {/* Right: fields */}
-      <div className="space-y-2.5">
-        <label className={fieldBox}>
-          <span className={fieldLabel}>Name</span>
-          <input
-            value={draft.name}
-            onChange={(e) => patch({ name: e.target.value })}
-            maxLength={40}
-            placeholder="What should we call you?"
-            className={fieldInput}
-          />
-        </label>
+      {/* Right: fields.
+          One column at every desktop width. A two-column variant was tried to
+          buy vertical room, but it squeezed the inputs to ~175px — clipped
+          placeholders and a scrolling textarea — which is a worse trade than
+          tightening the card's own spacing (see .mc-* in globals.css). */}
+      <div className="mc-fields space-y-2.5">
+        <div className="space-y-2.5">
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <label className={fieldBox}>
+              <span className={fieldLabel}>Name</span>
+              <input
+                value={draft.name}
+                onChange={(e) => patch({ name: e.target.value })}
+                maxLength={40}
+                placeholder="What should we call you?"
+                className={fieldInput}
+              />
+            </label>
+            <PronounSelect
+              value={draft.pronouns}
+              onChange={(pronouns) => patch({ pronouns })}
+            />
+          </div>
 
         <label className={fieldBox}>
           <span className={fieldLabel}>Location</span>
@@ -157,12 +198,13 @@ export default function StepProfile({ draft, patch }: StepProfileProps) {
             value={draft.bio}
             onChange={(e) => patch({ bio: e.target.value })}
             maxLength={200}
-            rows={3}
+            rows={2}
             placeholder="One line is enough — something people can start a conversation with."
-            className="mt-1 w-full resize-none bg-transparent text-[15px] leading-6 text-[#241B4F] outline-none placeholder:text-[#B3B0C7]"
+            className="mt-1 w-full resize-none bg-transparent text-[15px] leading-[22px] text-[#241B4F] outline-none placeholder:text-[#B3B0C7]"
           />
           <span className="block text-right text-[12px] text-[#A3A0B8]">{draft.bio.length}/200</span>
         </label>
+        </div>
 
         {/* Visibility — asked here, in step 1, so it is a choice the person
             makes rather than a default they discover later. */}
@@ -171,7 +213,7 @@ export default function StepProfile({ draft, patch }: StepProfileProps) {
         <div
           role="group"
           aria-labelledby="visibility-label"
-          className="rounded-2xl border border-[#E4E2F0] bg-[#F7F4FF] p-3.5"
+          className="rounded-2xl border border-[#E4E2F0] bg-[#F7F4FF] p-3 xl:p-3.5"
         >
           <p
             id="visibility-label"
@@ -180,8 +222,8 @@ export default function StepProfile({ draft, patch }: StepProfileProps) {
             <Lock size={15} className="text-[#5B5780]" aria-hidden="true" />
             Profile visibility
           </p>
-          <p className="mb-2.5 mt-1 text-[12px] text-[#7B7799]">
-            Choose who can see your profile on Mindcircle.
+          <p className="mb-2 mt-1 text-[12px] leading-[17px] text-[#7B7799]">
+            Choose who can see your profile.
           </p>
 
           <div role="radiogroup" aria-labelledby="visibility-label" className="grid gap-2 sm:grid-cols-2">
@@ -190,14 +232,12 @@ export default function StepProfile({ draft, patch }: StepProfileProps) {
               onSelect={() => patch({ isPublic: true })}
               icon={<Globe size={17} aria-hidden="true" />}
               title="Public profile"
-              hint="Anyone on Mindcircle can find and view your profile."
             />
             <VisibilityOption
               active={!draft.isPublic}
               onSelect={() => patch({ isPublic: false })}
               icon={<Lock size={17} aria-hidden="true" />}
               title="Private profile"
-              hint="Only people you connect with can view your profile."
             />
           </div>
         </div>

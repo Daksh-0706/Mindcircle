@@ -21,6 +21,8 @@ import {
   X,
 } from 'lucide-react'
 import { MOOD_EMOJIS } from '../../../../lib/constants'
+import { PRONOUNS } from '../../../../lib/profile-options'
+import { Select } from '../../../../components/ui/Select'
 import { cn } from '../../../../lib/utils'
 import NotoEmoji from '../../../../components/ui/NotoEmoji'
 
@@ -111,6 +113,7 @@ export default function EditProfilePage() {
 
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [pronouns, setPronouns] = useState('')
   const [avatar, setAvatar] = useState('😊')
   const [isPublic, setIsPublic] = useState(false)
   const [shareMoods, setShareMoods] = useState(false)
@@ -130,6 +133,7 @@ export default function EditProfilePage() {
         setEmail(json.user?.email ?? '')
         setName(json.user?.fullName ?? nameFromEmail(json.user?.email))
         setAvatar(json.profile?.avatar_emoji || '😊')
+        setPronouns(json.profile?.pronouns ?? '')
         setIsPublic(Boolean(json.profile?.is_public))
         setShareMoods(Boolean(json.profile?.share_moods))
         const existingAlias = json.profile?.alias ?? ''
@@ -194,10 +198,11 @@ export default function EditProfilePage() {
 
       // 2. Avatar emoji + community alias → profile row.
       const patch: Record<string, unknown> = {
-      avatar_emoji: avatar,
-      is_public: isPublic,
-      share_moods: shareMoods,
-    }
+        avatar_emoji: avatar,
+        is_public: isPublic,
+        share_moods: shareMoods,
+        pronouns,
+      }
       if (aliasChanged) patch.alias = alias.trim().toLowerCase()
 
       const avatarRes = await fetch('/api/me', {
@@ -379,6 +384,28 @@ export default function EditProfilePage() {
                     <X size={15} />
                   </button>
                 )}
+              </div>
+            </section>
+
+            {/* ── Pronouns ──────────────────────────── */}
+            <section className={CARD}>
+              <CardHeader
+                icon={<User size={19} />}
+                title="Pronouns"
+                desc="Shown next to your name so people address you correctly. Leave it blank if you would rather not say."
+              />
+              <div className="relative mt-4">
+                <User className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8A8A8A]" />
+                <Select
+                  id="pronouns"
+                  className="[&>button]:pl-12"
+                  size="control"
+                  ariaLabel="Pronouns"
+                  placeholder="Prefer not to say"
+                  options={PRONOUNS.filter((p) => p !== 'Prefer not to say')}
+                  value={pronouns}
+                  onChange={setPronouns}
+                />
               </div>
             </section>
 

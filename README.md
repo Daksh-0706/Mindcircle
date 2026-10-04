@@ -33,82 +33,6 @@ A safe, anonymous mental-wellness companion for students and young professionals
 | Database & Auth | [Supabase](https://supabase.com) — PostgreSQL, Auth (email + OTP + Google OAuth), Realtime, Storage |
 | State | React hooks + Route Handlers (no global store needed) |
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- **Node.js 20+**
-- A **Supabase project** (free tier works) — you'll need its URL and anon key
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment
-
-Create a `.env.local` file in the project root:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://<your-project>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
-```
-
-> Only the public URL and anon key are needed — all data protection is enforced by database-level Row Level Security, so no service-role key is used anywhere in the web app.
-
-### 3. Set up the database
-
-Open the **Supabase SQL Editor** and run every migration script below **in this order**. All of them are idempotent, so re-running one is safe.
-
-| # | File | What it creates |
-|---|---|---|
-| 1 | `supabase_migration_auth.sql` | Core tables, signup trigger, foreign keys |
-| 2 | `supabase_migration_real_data.sql` | RLS policies, story likes, sample rooms |
-| 3 | `supabase_migration_profile_setup.sql` | Makes `public.users` insertable and repairs the signup trigger |
-| 4 | `supabase_migration_profiles.sql` | Real profile columns + the `connections` table |
-| 5 | `supabase_migration_profile_about.sql` | `personality` and `note` for the About screen |
-| 6 | `supabase_migration_safety.sql` | Profile visibility, `blocks`, `reports`, auto-removal |
-| 7 | `supabase_migration_chat_media.sql` | Chat image attachments + optional mood sharing |
-
-> **Steps 3 and 4 are the ones people usually miss.** Without step 3 the `users` row for a brand-new account is never created, so `/api/me` returns 500 and the profile-setup flow never appears. If setup does not show up on a new account, run step 3 first.
-
-Tables created across all seven files: `users`, `mood_logs`, `journal_entries`, `stories`, `story_likes`, `chat_rooms`, `room_members`, `messages`, `direct_messages`, `matches`, `connections`, `blocks`, `reports` — each with its Row Level Security policies.
-
-### 4. Optional: Google sign-in
-
-Email/OTP works out of the box. For **Continue with Google**:
-
-1. In Supabase → **Authentication → Providers**, enable **Google** and paste your OAuth client ID and secret.
-2. In that same screen, add `http://localhost:3000/auth/callback` to **Redirect URLs** for local development, and your production domain for deployment.
-3. In Google Cloud Console, add the same URL as an **Authorized redirect URI**.
-
-### 5. Optional: tidy up old data
-
-If you have been testing the app for a while, orphaned rows may remain from accounts deleted before the cleanup triggers existed. Run `supabase_migration_dm_cleanup.sql` once in the SQL Editor to remove direct messages whose sender or receiver no longer exists. It is safe to re-run.
-
-### 6. Optional: seed demo people
-
-With only one or two accounts, Discover and Chats look empty. You can give the existing test accounts realistic names, bios, interests and goals straight from the SQL editor — update `display_name`, `location`, `bio`, `interests`, `goals`, `personality` and `note` on rows in `public.users`.
-
-### 7. Run the dev server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) — you'll be greeted by the landing page. Sign up with an email (or Google) and you're taken straight into the 4-step profile setup. 🎉
-
-### Other scripts
-
-```bash
-npm run build   # production build
-npm run start   # serve the production build
-npm run lint    # eslint
-npx tsc --noEmit   # type check without emitting files
-node scripts/test-room-flow.mjs   # e2e smoke test (needs dev server running)
-```
-
 ## 📁 Project Structure
 
 ```
@@ -174,7 +98,7 @@ flowchart LR
 
 Right after signup you are taken through one guided flow. It is designed so no step needs scrolling on a laptop or a phone:
 
-1. **Basics** — display name, location, and a short bio.
+1. **Basics** — display name, pronouns, location, and a short bio.
 2. **Avatar** — pick one of the built-in emoji avatars (no uploads needed).
 3. **Interests & goals** — choose from a fixed list, at least a few of each. These power Discover filtering and matching.
 4. **Review** — a summary of everything, plus the one decision that matters most for privacy:
