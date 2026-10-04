@@ -4,10 +4,17 @@ import { useParams, useRouter } from 'next/navigation'
 import Skeleton from '../../../../components/ui/Skeleton'
 import { Camera, ChevronLeft, Image as ImageIcon, Loader2, Send, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { MAX_IMAGES_PER_MESSAGE as MAX_IMAGES } from '@/lib/chat/limits'
 import { formatTime } from '../../../../lib/dates'
 import { roomEmoji } from '../../../../lib/alias'
 import NotoEmoji from '../../../../components/ui/NotoEmoji'
 import { AppNav } from '../../../../components/layout/AppNavContext'
+import {
+  AttachmentPreview,
+  ImageGrid,
+  ImageLightbox,
+} from '../../../../components/chat/AttachmentPreview'
+import { MessageDetails, MessageMenu } from '../../../../components/chat/MessageMenu'
 
 type ChatMessage = {
   id: string
@@ -15,11 +22,20 @@ type ChatMessage = {
   sender_id: string
   receiver_id?: string | null
   content: string
-  /** Storage path, e.g. "<uid>/<file>.jpg" — not directly loadable. */
+  /** Storage paths, e.g. "<uid>/<file>.jpg" — not directly loadable. */
   media_url?: string | null
-  /** Short-lived signed URL produced by the API for `media_url`. */
+  media_paths?: string[] | null
+  /** Short-lived signed URLs produced by the API, one per image. */
+  image_urls?: string[] | null
+  /** First signed URL, kept for older rows that predate multi-image. */
   image_url?: string | null
   created_at: string
+}
+
+/** Signed URLs for a message, whichever shape the API returned it in. */
+function imageUrlsOf(m: ChatMessage): string[] {
+  if (m.image_urls && m.image_urls.length > 0) return m.image_urls
+  return m.image_url ? [m.image_url] : []
 }
 
 /** Longest edge we store. Photos are downscaled before upload to keep them light. */
@@ -114,10 +130,20 @@ export default function ChatDetailPage() {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   // Image attachment state: a picked/captured photo, then the uploaded path.
-  const [attachment, setAttachment] = useState<{ preview: string; blob: Blob } | null>(null)
+  const [attachments, setAttachments] = useState<{ preview: string; blob: Blob }[]>([])
   const [uploading, setUploading] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraError, setCameraError] = useState('')
+  // Caption typed over a picked image. Kept apart from `message` so closing
+  // the preview without sending does not leave stray text in the composer.
+  const [caption, setCaption] = useState('')
+  // Full-screen preview of the picked image, and of anything already sent.
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null)
+  // The message the three-dot menu is acting on, and whether it is being
+  // removed. Kept as state rather than a ref so the sheet renders from it.
+  const [menuMessage, setMenuMessage] = useState<ChatMessage | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -139,16 +165,39 @@ export default function ChatDetailPage() {
     return () => stream?.getTracks().forEach((track) => track.stop())
   }, [cameraOpen])
 
-  const pickFile = async (file: File | undefined | null) => {
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setError('Only images can be sent.')
+  /**
+   * Adds one or more picked files to the pending set.
+   *
+   * Existing picks are kept: the gallery picker on Android and iOS lets you
+   * add to a selection, and replacing the set every time would silently drop
+   * images the user already chose.
+   */
+  const pickFiles = async (files: FileList | File[] | null | undefined) => {
+    const list = Array.from(files ?? [])
+    if (list.length === 0) return
+
+    const room = MAX_IMAGES - attachments.length
+    if (room <= 0) {
+      setError(`You can send up to ${MAX_IMAGES} images at once.`)
       return
     }
+
+    const images = list.filter((f) => f.type.startsWith('image/'))
+    if (images.length < list.length) setError('Only images can be sent.')
+    if (images.length === 0) return
+
+    const accepted = images.slice(0, room)
+    if (images.length > room) {
+      setError(`You can send up to ${MAX_IMAGES} images at once.`)
+    }
+
     try {
-      const { dataUrl, blob } = await compressImage(file)
-      setAttachment({ preview: dataUrl, blob })
-      setError('')
+      const compressed = await Promise.all(accepted.map((f) => compressImage(f)))
+      setAttachments((prev) => [
+        ...prev,
+        ...compressed.map(({ dataUrl, blob }) => ({ preview: dataUrl, blob })),
+      ])
+      setPreviewOpen(true)
     } catch {
       setError('Could not read that image.')
     }
@@ -163,7 +212,7 @@ export default function ChatDetailPage() {
     canvas.getContext('2d')?.drawImage(video, 0, 0)
     canvas.toBlob(
       (blob) => {
-        if (blob) void pickFile(new File([blob], 'photo.jpg', { type: 'image/jpeg' }))
+        if (blob) void pickFiles([new File([blob], 'photo.jpg', { type: 'image/jpeg' })])
       },
       'image/jpeg',
       JPEG_QUALITY,
@@ -171,22 +220,34 @@ export default function ChatDetailPage() {
     setCameraOpen(false)
   }
 
-  /** Uploads to the private chat-media bucket and returns the stored path. */
-  const uploadAttachment = async () => {
-    if (!attachment) return null
+  /**
+   * Uploads every pending image to the private chat-media bucket.
+   *
+   * They go up in parallel because each is a few hundred KB and the requests
+   * are independent. One failure fails the whole send rather than posting a
+   * message with a silent gap in the set, which is worse than an error the
+   * user can retry.
+   */
+  const uploadAttachments = async (pending: { preview: string; blob: Blob }[]) => {
+    if (pending.length === 0) return null
     const supabase = createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) throw new Error('Please sign in again.')
 
-    // Random name: the path must not be guessable from message ids.
-    const path = `${user.id}/${crypto.randomUUID()}.jpg`
-    const { error } = await supabase.storage
-      .from('chat-media')
-      .upload(path, attachment.blob, { contentType: 'image/jpeg' })
-    if (error) throw new Error(`Upload failed: ${error.message}`)
-    return path
+    const results = await Promise.all(
+      pending.map(async ({ blob }) => {
+        // Random name: the path must not be guessable from message ids.
+        const path = `${user.id}/${crypto.randomUUID()}.jpg`
+        const { error } = await supabase.storage
+          .from('chat-media')
+          .upload(path, blob, { contentType: 'image/jpeg' })
+        if (error) throw new Error(`Upload failed: ${error.message}`)
+        return path
+      }),
+    )
+    return results
   }
 
   // Resolve the signed-in user id once.
@@ -291,15 +352,30 @@ export default function ChatDetailPage() {
    */
   const backHref = isRoom ? '/app/connect' : '/app/chats'
 
+  /**
+   * Which text field the outgoing message should take.
+   *
+   * Sending a photo happens from the preview sheet, so its caption wins while
+   * the sheet is open; sending plain text uses the composer.
+   */
+  const pendingCaptionSource = () =>
+    previewOpen && caption.trim() ? caption : message
+
   const handleSend = async () => {
-    const content = message.trim()
-    const pendingImage = attachment
-    if ((!content && !pendingImage) || sending || uploading || isRoom === null) return
+    // With an image open, the caption bar is the source of the text — the
+    // composer behind it is not visible and may still hold a draft.
+    const content = (pendingCaptionSource()).trim()
+    const pendingImages = attachments
+    if ((!content && pendingImages.length === 0) || sending || uploading || isRoom === null) return
 
     setSending(true)
     setMessage('')
-    if (pendingImage) setUploading(true)
-    if (pendingImage) setAttachment(null)
+    setCaption('')
+    setPreviewOpen(false)
+    if (pendingImages.length > 0) {
+      setUploading(true)
+      setAttachments([])
+    }
 
     const tempId = `temp-${Date.now()}`
     if (myId) {
@@ -310,15 +386,17 @@ export default function ChatDetailPage() {
           sender_id: myId,
           content,
           created_at: new Date().toISOString(),
-          // Show the local copy straight away; the saved row replaces it.
-          image_url: pendingImage?.preview ?? null,
+          // Show the local copies straight away; the saved row replaces them.
+          image_urls: pendingImages.map((a) => a.preview),
+          image_url: null,
           media_url: null,
+          media_paths: null,
         },
       ])
     }
 
     try {
-      const mediaPath = pendingImage ? await uploadAttachment() : null
+      const mediaPaths = pendingImages.length > 0 ? await uploadAttachments(pendingImages) : null
 
       const res = isRoom
         ? await fetch('/api/chat/messages', {
@@ -327,7 +405,7 @@ export default function ChatDetailPage() {
             body: JSON.stringify({
               room_id: peerId,
               content,
-              ...(mediaPath ? { media_url: mediaPath } : {}),
+              ...(mediaPaths ? { media_paths: mediaPaths } : {}),
             }),
           })
         : await fetch('/api/chat/dm', {
@@ -336,7 +414,7 @@ export default function ChatDetailPage() {
             body: JSON.stringify({
               receiver_id: peerId,
               content,
-              ...(mediaPath ? { media_url: mediaPath } : {}),
+              ...(mediaPaths ? { media_paths: mediaPaths } : {}),
             }),
           })
       if (!res.ok) {
@@ -351,7 +429,11 @@ export default function ChatDetailPage() {
               m.id === tempId
                 ? // The POST response carries the path but no signed URL, so the
                   // local preview is kept until the next fetch signs it.
-                  { ...saved, image_url: mediaPath ? (m.image_url ?? null) : null }
+                  {
+                    ...saved,
+                    image_urls: mediaPaths ? (m.image_urls ?? null) : null,
+                    image_url: null,
+                  }
                 : m,
             )
           : prev.filter((m) => m.id !== tempId),
@@ -359,12 +441,40 @@ export default function ChatDetailPage() {
     } catch (e) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId))
       setMessage(content)
-      // Give the photo back rather than losing it to a failed upload.
-      if (pendingImage) setAttachment(pendingImage)
+      // Give the photos back rather than losing them to a failed upload.
+      if (pendingImages.length > 0) setAttachments(pendingImages)
       setError(e instanceof Error ? e.message : 'Message could not be sent.')
     } finally {
       setSending(false)
       setUploading(false)
+    }
+  }
+
+  /**
+   * Deletes one of my own messages, then drops it from the thread.
+   *
+   * The row is only marked deleted server-side, so the optimistic removal here
+   * is what the sender sees immediately; everyone else gets the placeholder on
+   * their next fetch.
+   */
+  const handleDelete = async (m: ChatMessage) => {
+    setDeleting(true)
+    setError('')
+    try {
+      const endpoint = isRoom ? '/api/chat/messages' : '/api/chat/dm'
+      const res = await fetch(`${endpoint}?id=${encodeURIComponent(m.id)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        throw new Error(json?.error || 'That message could not be deleted.')
+      }
+      setMessages((prev) => prev.filter((x) => x.id !== m.id))
+      setMenuMessage(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That message could not be deleted.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -416,8 +526,12 @@ export default function ChatDetailPage() {
           ) : (
             messages.map((m) => {
               const mine = myId !== null && m.sender_id === myId
+              const urls = imageUrlsOf(m)
               return (
-                <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  key={m.id}
+                  className={`group flex items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}
+                >
                   <div
                     className={
                       mine
@@ -425,12 +539,10 @@ export default function ChatDetailPage() {
                         : 'max-w-[80%] rounded-[18px] rounded-bl-md border border-warm-gray-lighter/60 bg-white px-3.5 py-2.5 text-[14px] leading-6 text-charcoal shadow-[0_2px_8px_rgba(74,44,94,0.06)]'
                     }
                   >
-                    {m.image_url && (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={m.image_url}
-                        alt="Shared image"
-                        className="-mx-1 mb-1.5 max-h-64 w-[calc(100%+0.5rem)] rounded-[14px] object-cover"
+                    {urls.length > 0 && (
+                      <ImageGrid
+                        urls={urls}
+                        onOpen={(index) => setLightbox({ urls, index })}
                       />
                     )}
                     {m.content && (
@@ -446,6 +558,17 @@ export default function ChatDetailPage() {
                       {timeLabel(m.created_at)}
                     </p>
                   </div>
+                  {/* Only ever on the caller's own messages: the server refuses
+                      a delete for anybody else's, so offering it would be a
+                      dead end. Hidden on desktop until the row is hovered, so a
+                      thread does not turn into a wall of dots; always visible on
+                      touch, where there is no hover to reveal it. */}
+                  {mine && !m.id.startsWith('temp-') && (
+                    <MessageMenu
+                      onShowDetails={() => setMenuMessage(m)}
+                      onDelete={() => setMenuMessage(m)}
+                    />
+                  )}
                 </div>
               )
             })
@@ -459,24 +582,47 @@ export default function ChatDetailPage() {
           </p>
         )}
 
-        {/* Picked image, shown above the composer with a way to discard it. */}
-        {attachment && (
-          <div className="mt-2 flex items-end gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={attachment.preview}
-              alt="Image ready to send"
-              className="h-20 w-20 rounded-[14px] object-cover shadow-[0_2px_10px_rgba(74,44,94,0.14)]"
-            />
-            <button
-              type="button"
-              onClick={() => setAttachment(null)}
-              aria-label="Remove image"
-              className="rounded-full bg-[#F1EDFB] px-3 py-1.5 text-[12px] font-bold text-charcoal/70"
-            >
-              Remove
-            </button>
-          </div>
+        {/* A picked image gets the full-screen sheet, not a thumbnail strip —
+            a 20px square is not enough to confirm the right photo. The sheet
+            stays up until it is sent or dismissed. */}
+        {attachments.length > 0 && previewOpen && (
+          <AttachmentPreview
+            images={attachments}
+            caption={caption}
+            onCaptionChange={setCaption}
+            onClose={() => {
+              setPreviewOpen(false)
+              setCaption('')
+              setAttachments([])
+            }}
+            onSend={() => void handleSend()}
+            onRemove={(i) =>
+              setAttachments((prev) => prev.filter((_, idx) => idx !== i))
+            }
+            onAddMore={() => fileInputRef.current?.click()}
+            canAddMore={attachments.length < MAX_IMAGES}
+            sending={sending || uploading}
+          />
+        )}
+
+        {menuMessage && (
+          <MessageDetails
+            sentAt={menuMessage.created_at}
+            hasImage={imageUrlsOf(menuMessage).length > 0}
+            deleting={deleting}
+            onClose={() => (deleting ? null : setMenuMessage(null))}
+            onDelete={() => void handleDelete(menuMessage)}
+          />
+        )}
+
+        {/* Lightbox for an image that is already in the thread. */}
+        {lightbox && (
+          <ImageLightbox
+            urls={lightbox.urls}
+            index={lightbox.index}
+            onIndexChange={(index) => setLightbox((prev) => (prev ? { ...prev, index } : prev))}
+            onClose={() => setLightbox(null)}
+          />
         )}
 
         {/* Composer — a single pill bar pinned to the bottom. */}
@@ -500,10 +646,11 @@ export default function ChatDetailPage() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            aria-label="Choose an image"
+            multiple
+            aria-label="Choose images"
             className="hidden"
             onChange={(e) => {
-              void pickFile(e.target.files?.[0])
+              void pickFiles(e.target.files)
               // Reset so picking the same file twice still fires onChange.
               e.target.value = ''
             }}
@@ -534,7 +681,7 @@ export default function ChatDetailPage() {
 
           <button
             onClick={handleSend}
-            disabled={sending || uploading || (!message.trim() && !attachment)}
+            disabled={sending || uploading || (!message.trim() && attachments.length === 0)}
             aria-label="Send message"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-plum text-white shadow-[0_6px_18px_rgba(74,44,94,0.28)] transition-transform active:scale-95 disabled:opacity-40"
           >

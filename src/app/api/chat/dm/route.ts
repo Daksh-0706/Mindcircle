@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { asUuid, badRequest } from '@/lib/security'
+import { readMediaPaths, withSignedImages } from '@/lib/chat/media'
+import { deleteMessage } from '@/lib/chat/delete'
 
 /**
  * GET /api/chat/dm
@@ -135,34 +137,6 @@ export async function GET(request: Request) {
   })
 }
 
-/**
- * Attach a short-lived signed URL to every message carrying an image.
- *
- * The chat-media bucket is private, so `media_url` holds only a storage path;
- * signing server-side keeps the bucket closed and lets the URLs expire.
- */
-async function withSignedImages(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  rows: Record<string, unknown>[],
-) {
-  const paths = [
-    ...new Set(
-      rows
-        .map((r) => r.media_url)
-        .filter((p): p is string => typeof p === 'string' && p.length > 0),
-    ),
-  ]
-  if (paths.length === 0) return rows
-
-  const { data } = await supabase.storage.from('chat-media').createSignedUrls(paths, 3600)
-  const signed = new Map((data ?? []).map((f) => [f.path, f.signedUrl]))
-
-  return rows.map((r) => ({
-    ...r,
-    image_url: typeof r.media_url === 'string' ? (signed.get(r.media_url) ?? null) : null,
-  }))
-}
-
 export async function POST(request: Request) {
   const supabase = await createClient()
   const {
@@ -173,19 +147,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = (await request.json().catch(() => null)) as
-    | { receiver_id?: unknown; content?: unknown }
-    | null
+  const body = (await request.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null
 
   const receiverId = asUuid(body?.receiver_id)
   const content =
     typeof body?.content === 'string' ? body.content.trim() : ''
-  const mediaUrl =
-    typeof (body as { media_url?: unknown } | null)?.media_url === 'string'
-      ? (body as { media_url: string }).media_url
-      : ''
+  const media = body ? readMediaPaths(body, user.id) : { ok: true as const, paths: [] }
+  if (!media.ok) return badRequest(media.error)
+  const mediaPaths = media.paths
 
-  if (!receiverId || (!content && !mediaUrl)) {
+  if (!receiverId || (!content && mediaPaths.length === 0)) {
     return badRequest('A valid receiver_id and either content or an image are required.')
   }
 
@@ -195,11 +169,6 @@ export async function POST(request: Request) {
     .eq('blocker_id', user.id)
   if ((blockRows ?? []).some((b) => b.blocked_id === receiverId)) {
     return badRequest('You have blocked this person.')
-  }
-
-  // Only the sender's own folder may be attached.
-  if (mediaUrl && !mediaUrl.startsWith(`${user.id}/`)) {
-    return badRequest('That image does not belong to you.')
   }
 
   // Verify the receiver actually exists — otherwise the FK violation leaks
@@ -226,7 +195,7 @@ export async function POST(request: Request) {
       sender_id: user.id,
       receiver_id: receiverId,
       content,
-      media_url: mediaUrl || null,
+      media_paths: mediaPaths.length > 0 ? mediaPaths : null,
     }])
     .select()
 
@@ -235,4 +204,24 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ data }, { status: 201 })
+}
+
+/**
+ * DELETE /api/chat/dm?id=<uuid>
+ *
+ * Removes one of the caller's own direct messages for both sides. The recipient
+ * cannot use this: the update is scoped to the sender.
+ */
+export async function DELETE(request: Request) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const id = new URL(request.url).searchParams.get('id')
+  return deleteMessage(supabase, 'direct_messages', id ?? '', user.id)
 }
