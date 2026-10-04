@@ -123,8 +123,11 @@ export function AppLayout({
   const compact = isMobile || isTablet
 
   // Resolve the signed-in user so the shell shows their name instead of "Guest".
+  // Runs on the standalone pages too: they are public, so a guest reaches them
+  // without a session, but a member who opens Crisis Support from inside the app
+  // should still get the bottom nav. With no session getUser() fails locally
+  // without a network request, so this costs guests nothing.
   useEffect(() => {
-    if (standalone) return
     let active = true
     createClient()
       .auth.getUser()
@@ -137,7 +140,7 @@ export function AppLayout({
     return () => {
       active = false
     }
-  }, [standalone])
+  }, [])
 
   // Fall back to caller-provided props, then to the fetched user.
   const resolved = authUser ?? {
@@ -167,6 +170,7 @@ export function AppLayout({
         userInitials={resolved.initials}
         userRole={resolved.role}
         onLogout={onLogout}
+        signedIn={Boolean(authUser)}
         rightSidebar={rightSidebar}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
@@ -188,6 +192,7 @@ function Shell({
   userInitials,
   userRole,
   onLogout,
+  signedIn,
   rightSidebar,
   sidebarOpen,
   setSidebarOpen,
@@ -201,6 +206,8 @@ function Shell({
   userInitials?: string
   userRole?: string
   onLogout?: () => void
+  /** True once a session exists. Gates the bottom nav on public pages. */
+  signedIn: boolean
   rightSidebar?: React.ReactNode
   sidebarOpen: boolean
   setSidebarOpen: (v: boolean) => void
@@ -210,8 +217,17 @@ function Shell({
 
   // ── Standalone (public help/crisis pages): content only, no dashboard ──
   if (standalone) {
+    const bottomOffset = compact && signedIn ? '4.5rem' : '0rem'
     return (
-      <div className="min-h-screen bg-cream">
+      <div
+        className="min-h-screen bg-cream"
+        /* Pages with floating elements (the crisis call pill, the nudge card)
+           read this so they clear the bottom nav when there is one and sit at
+           a normal margin when there isn't. A CSS custom property is used
+           rather than a prop because those elements are `position: fixed` and
+           still inherit custom properties from their DOM ancestor. */
+        style={{ '--mc-bottom-offset': bottomOffset } as React.CSSProperties}
+      >
         {/* Full-bleed on purpose: the crisis hero artwork is a page-wide band
             that fades into the background at its edges, so constraining it
             here would reintroduce the hard rectangle. Each page owns its own
@@ -239,11 +255,16 @@ function Shell({
           />
         </header>
         {/* h-16 clears the sticky header so no page starts flush under it.
-            pb-24 on compact reserves room for the floating bottom nav. */}
-        <main className={cn('w-full pt-16', compact && 'pb-24')}>{children}</main>
-        {/* These routes are reachable without a session, so tapping an item
-            sends a guest to login — which is the right destination for it. */}
-        {compact && <BottomNav />}
+            pb-24 reserves room for the bottom nav, but only when there is
+            one — a guest arriving from the landing page gets none. */}
+        <main className={cn('w-full pt-16', compact && signedIn && 'pb-24')}>
+          {children}
+        </main>
+        {/* Shown only to signed-in members. A guest who reached these pages
+            from the landing page gets no dashboard nav, and — just as
+            importantly — no prefetches of the five guarded /app routes, which
+            would 401 and bounce them to the login screen mid-read. */}
+        {compact && signedIn && <BottomNav />}
       </div>
     )
   }

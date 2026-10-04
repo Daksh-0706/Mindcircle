@@ -91,6 +91,30 @@ export const PUBLIC_ROUTES: {
     changeFrequency: 'monthly',
   },
   {
+    path: '/blog',
+    title: 'Guides — MindCircle',
+    description:
+      'Practical, judgement-free guides on exam stress, supporting a friend who is anxious, and looking after your mental health as a student.',
+    priority: 0.8,
+    changeFrequency: 'monthly',
+  },
+  {
+    path: '/blog/exam-stress',
+    title: 'How to handle exam stress — MindCircle',
+    description:
+      'A realistic, low-effort routine for the week before exams — sleep, study blocks, food, and what to do when your mind goes blank. Written for students.',
+    priority: 0.8,
+    changeFrequency: 'monthly',
+  },
+  {
+    path: '/blog/help-a-friend',
+    title: 'How to help a friend who is struggling with anxiety — MindCircle',
+    description:
+      'What to say, what not to say, and how to actually help a friend who is anxious — without making it about you or trying to fix them.',
+    priority: 0.8,
+    changeFrequency: 'monthly',
+  },
+  {
     path: '/terms',
     title: 'Terms & Conditions — MindCircle',
     description:

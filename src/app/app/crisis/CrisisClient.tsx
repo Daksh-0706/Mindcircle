@@ -410,13 +410,15 @@ export default function CrisisPage() {
 
         {/* ── Floating gradient CTA pill ────────────── */}
         {/*
-          `bottom-24` clears the BottomNav, which only renders below 1024.
-          From `lg` up there is no bottom bar, so the pill drops to a normal
-          margin instead of floating 96px up with a gap beneath it.
+          The bottom offset comes from `--mc-bottom-offset`, which AppLayout
+          sets to 0 for a guest and to the height of the bottom nav for a
+          signed-in member. So the pill sits low for someone who arrived from
+          the landing page, and floats clear of the nav for a member.
         */}
         <a
           href="tel:9152987821"
-          className="fixed bottom-24 left-4 right-4 z-50 mx-auto flex w-auto max-w-xl items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#3A1F4A] via-[#5B3E8E] to-[#C45D3E] px-6 py-4 text-base font-bold text-white shadow-[0_12px_40px_rgba(42,27,61,0.35)] transition-transform hover:-translate-y-0.5 sm:left-1/2 sm:right-auto sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:hover:-translate-x-1/2 sm:hover:-translate-y-0.5 lg:bottom-8"
+          style={{ bottom: 'calc(1.25rem + var(--mc-bottom-offset, 0rem))' }}
+          className="fixed left-4 right-4 z-50 mx-auto flex w-auto max-w-xl items-center justify-center gap-3 rounded-full bg-gradient-to-r from-[#3A1F4A] via-[#5B3E8E] to-[#C45D3E] px-6 py-4 text-base font-bold text-white shadow-[0_12px_40px_rgba(42,27,61,0.35)] transition-transform hover:-translate-y-0.5 sm:left-1/2 sm:right-auto sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:hover:-translate-x-1/2 sm:hover:-translate-y-0.5 lg:bottom-8"
         >
           <Phone className="h-5 w-5" />
           Call iCall Now: 9152987821
@@ -434,7 +436,8 @@ export default function CrisisPage() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 32, scale: 0.95 }}
             transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-            className="fixed bottom-44 left-4 right-4 z-[60] mx-auto max-w-md rounded-[28px] bg-white p-5 shadow-[0_24px_64px_rgba(42,27,61,0.22)] sm:left-auto sm:right-8 sm:bottom-32 sm:mx-0"
+            style={{ bottom: 'calc(5.75rem + var(--mc-bottom-offset, 0rem))' }}
+            className="fixed left-4 right-4 z-[60] mx-auto max-w-md rounded-[28px] bg-white p-5 shadow-[0_24px_64px_rgba(42,27,61,0.22)] sm:left-auto sm:right-8 sm:bottom-32 sm:mx-0"
           >
             <button
               type="button"

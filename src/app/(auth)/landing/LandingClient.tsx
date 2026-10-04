@@ -86,6 +86,7 @@ function Navbar() {
   ]
 
   const moreLinks = [
+    { label: 'Guides', href: '/blog' },
     { label: 'About', href: '/app/help/about' },
     { label: 'Support', href: '/app/crisis' },
     { label: 'Contact Us', href: '/app/help/support' },
@@ -522,6 +523,14 @@ function Footer() {
               Support
             </h4>
             <ul className="space-y-2.5 text-sm">
+              <li>
+                <Link
+                  href="/blog"
+                  className="hover:text-cream transition-colors"
+                >
+                  Guides
+                </Link>
+              </li>
               <li>
                 <Link
                   href="/app/help/faq"
