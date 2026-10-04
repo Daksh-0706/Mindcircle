@@ -23,7 +23,7 @@ export const faqs = [
   },
   {
     q: 'What happens in a crisis or emergency?',
-    a: 'Open the Crisis Support page from the sidebar. It gives you one-tap access to 24/7 helplines (iCall, Vandrevala Foundation, AASRA), a guided breathing exercise to calm your body, and a gentle fact sheet on understanding anxiety. If you or someone else is in immediate danger, always call emergency services (112) or go to the nearest emergency room first.',
+    a: 'Open the Crisis Support page from the sidebar. It stays reachable without logging in, so you never have to sign up while in distress. It gives one-tap access to 24/7 helplines (iCall, the Vandrevala Foundation and AASRA), a guided breathing exercise to settle your body, and a gentle fact sheet on understanding anxiety. If you or someone else is in immediate danger, call 112 or go to the nearest emergency room first — do not wait for an app.',
   },
   {
     q: 'How do mood check-ins and insights work?',
@@ -37,4 +37,47 @@ export const faqs = [
     q: 'Is MindCircle a replacement for therapy?',
     a: 'No. MindCircle is a support tool — journaling, mood tracking, peer circles, and wellbeing activities are there to help you reflect and feel less alone. It is not medical care and does not replace a licensed professional. If you are struggling beyond what peer support covers, the Counsellors page and Crisis Support page are the right next steps.',
   },
-] as const
+
+  /* ── Second batch ────────────────────────────────────────────
+     Same rules as above: every answer here describes something the
+     app actually does, and anything planned is described as
+     planned. These were added for search visibility, so they target
+     the questions people actually type into Google. */
+
+  {
+    q: 'Is my journal end-to-end encrypted?',
+    a: 'No, and we would rather say so plainly than overstate it. Journal entries are stored in an encrypted database with row-level security, and they are readable only by you — not by other members, not by moderators. But data at rest encryption is not the same as end-to-end encryption, where only you hold the key. We describe the protection we have honestly rather than using a bigger word for it.',
+  },
+  {
+    q: 'Who can see my mood history and journal?',
+    a: 'Only you. Mood check-ins and journal entries are tied to your account and are never shown in community spaces, never attached to a story you post, and never shared with another member. If you turn on mood sharing, a connected person sees an aggregated trend — a gentle summary of how your mood has moved over time, not the individual entries with their notes.',
+  },
+  {
+    q: 'What does my alias reveal about me?',
+    a: 'Nothing. Your alias is generated for you, and community spaces show that instead of your name. Your journal, mood history and connections stay behind it. Your display name is yours to set and only appears on your own profile.',
+  },
+  {
+    q: 'Can someone find me by searching my email or real name?',
+    a: 'The directory search matches your alias, display name, location and bio — not your email address. Your email is used for sign-in and is never shown to other members or returned by the people-listing API. A display name is optional and may be shared by several people, so it is not something to rely on for privacy.',
+  },
+  {
+    q: 'Can I make my profile private?',
+    a: 'Yes, and it is your choice during setup. A private profile shows only your alias and avatar to people who are not connected with you — your bio, location, interests, goals and mood trends are not sent to their browser at all. You can change the setting later in Settings.',
+  },
+  {
+    q: 'What happens when I block someone?',
+    a: 'They disappear from your discovery list, your connections and your chat threads, and you will not be able to find or message each other again. Blocking also removes an existing connection. Blocking is immediate and does not need the other person to know.',
+  },
+  {
+    q: 'How does reporting work?',
+    a: 'Every profile has a Report option in the menu. Tell us what happened, and we review it. You can report the same person only once, so you do not have to keep resubmitting while we look into it.',
+  },
+  {
+    q: 'Is MindCircle free?',
+    a: 'Yes. There is no paid tier and no feature behind a paywall. It is built by a small team and supported by the people who use it.',
+  },
+  {
+    q: 'How do I delete my account and my data?',
+    a: 'You stay in control. Use Delete account in Settings and your profile, journal entries, mood logs, stories and connections are permanently removed, with no recovery period. You can also delete any single journal entry or story yourself at any time, without contacting us.',
+  },
+  ] as const
