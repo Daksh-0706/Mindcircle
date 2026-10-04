@@ -80,26 +80,9 @@ export const FEATURES = [
   },
 ] as const
 
-export const TESTIMONIALS = [
-  {
-    name: 'Priya S.',
-    role: 'College Student',
-    text: 'MindCircle helped me understand that I was not alone. The anonymous community made it safe to open up about my anxiety.',
-    initials: 'PS',
-    color: '#7B9E6B',
-  },
-  {
-    name: 'Arjun K.',
-    role: 'Graduate Student',
-    text: 'The journaling feature changed my life. I can see my growth over months, and the mood tracking helped me identify my triggers.',
-    initials: 'AK',
-    color: '#4A2C5E',
-  },
-  {
-    name: 'Maya R.',
-    role: 'Young Professional',
-    text: 'Finally, a mental health app that does not feel clinical. The warm design and community rooms make it feel like a safe space.',
-    initials: 'MR',
-    color: '#C45D3E',
-  },
-] as const
+/* Testimonials used to live here as three invented reviews (Priya S., Arjun
+   K., Maya R.) rendered on the landing page. They were removed rather than
+   softened: we had no real users behind them, and publishing invented
+   testimonials from a mental-health app is both misleading and, in most
+   consumer-protection regimes, unlawful. Real quotes belong here once they
+   exist, with the person's actual permission to be named. */

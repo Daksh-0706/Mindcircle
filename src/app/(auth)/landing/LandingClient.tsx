@@ -19,7 +19,7 @@ import {
   Mail,
   MapPin,
 } from 'lucide-react'
-import { FEATURES, TESTIMONIALS } from '../../../lib/constants'
+import { FEATURES } from '../../../lib/constants'
 import { StickyMobileCta } from '@/components/common/StickyMobileCta'
 import { CONTACT } from '@/lib/seo'
 import { Logo } from '../../../components/common/Logo'
@@ -83,7 +83,6 @@ function Navbar() {
   const links = [
     { label: 'Features', href: '#features' },
     { label: 'How It Works', href: '#how-it-works' },
-    { label: 'Testimonials', href: '#testimonials' },
   ]
 
   const moreLinks = [
@@ -432,64 +431,6 @@ function HowItWorksSection() {
   )
 }
 
-/* ── Testimonials Section ─────────────────────────────────── */
-
-function TestimonialsSection() {
-  return (
-    <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="font-heading text-3xl sm:text-4xl font-bold text-charcoal">
-            Loved by <span className="gradient-text">Thousands</span>
-          </h2>
-          <p className="mt-4 text-warm-gray max-w-xl mx-auto text-lg">
-            Hear from people who have found their safe space with MindCircle.
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
-            <motion.div
-              key={t.name}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="glass-card rounded-2xl p-6 flex flex-col"
-            >
-              {/* Quote mark */}
-              <div className="font-heading text-5xl text-plum/20 leading-none mb-2">
-                &ldquo;
-              </div>
-              <p className="text-charcoal/80 text-sm leading-relaxed flex-1">
-                {t.text}
-              </p>
-              <div className="flex items-center gap-3 mt-6 pt-4 border-t border-warm-gray-lighter">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-cream text-sm font-bold"
-                  style={{ backgroundColor: t.color }}
-                >
-                  {t.initials}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-charcoal">{t.name}</p>
-                  <p className="text-xs text-warm-gray">{t.role}</p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 /* ── CTA Section ──────────────────────────────────────────── */
 
 function CTASection() {
@@ -512,8 +453,8 @@ function CTASection() {
             <span className="gradient-text">Journey</span>?
           </h2>
           <p className="text-warm-gray text-lg max-w-lg mx-auto mb-8">
-            Join thousands of students and young professionals who have found
-            their safe space for mental wellness.
+            A private place to journal, notice your moods, and find people who
+            understand — built for students and young professionals.
           </p>
           <Link
             href="/signup"
@@ -691,7 +632,6 @@ export default function LandingPage() {
         <HeroSection />
         <FeaturesSection />
         <HowItWorksSection />
-        <TestimonialsSection />
         <CTASection />
         <Footer />
       </motion.div>
