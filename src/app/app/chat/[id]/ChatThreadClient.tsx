@@ -512,7 +512,7 @@ export default function ChatDetailPage() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Messages */}
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-1 py-2">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-1 py-1.5">
           {loading ? (
             <div className="space-y-4">
               <Skeleton variant="rect" width="55%" height={48} />
@@ -535,8 +535,8 @@ export default function ChatDetailPage() {
                   <div
                     className={
                       mine
-                        ? 'max-w-[80%] rounded-[18px] rounded-br-md bg-plum px-3.5 py-2.5 text-[14px] leading-6 text-cream shadow-[0_2px_8px_rgba(74,44,94,0.14)]'
-                        : 'max-w-[80%] rounded-[18px] rounded-bl-md border border-warm-gray-lighter/60 bg-white px-3.5 py-2.5 text-[14px] leading-6 text-charcoal shadow-[0_2px_8px_rgba(74,44,94,0.06)]'
+                        ? 'max-w-[55%] rounded-[16px] rounded-br-md bg-plum px-3 py-2 text-[13px] leading-5 text-cream shadow-[0_2px_6px_rgba(74,44,94,0.12)]'
+                        : 'max-w-[55%] rounded-[16px] rounded-bl-md border border-warm-gray-lighter/60 bg-white px-3 py-2 text-[13px] leading-5 text-charcoal shadow-[0_2px_6px_rgba(74,44,94,0.05)]'
                     }
                   >
                     {urls.length > 0 && (
@@ -551,8 +551,8 @@ export default function ChatDetailPage() {
                     <p
                       className={
                         mine
-                          ? 'mt-0.5 text-right text-[10px] text-cream/60'
-                          : 'mt-0.5 text-right text-[10px] text-warm-gray'
+                          ? 'mt-0.5 text-right text-[9px] text-cream/60'
+                          : 'mt-0.5 text-right text-[9px] text-warm-gray'
                       }
                     >
                       {timeLabel(m.created_at)}
