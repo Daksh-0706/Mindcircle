@@ -1,7 +1,6 @@
 'use client'
-import Link from 'next/link'
 import { AppNav } from '../../../components/layout/AppNavContext'
-import { ArrowRight, BadgeCheck, Briefcase, Calendar, ChevronRight, Clock, Info, Lock, ShieldCheck, Video } from 'lucide-react'
+import { BadgeCheck, Briefcase, Calendar, ChevronRight, Clock, Info, Lock, ShieldCheck, Video } from 'lucide-react'
 import { COUNSELLORS } from '../../../lib/counsellors'
 import { cn } from '../../../lib/utils'
 
@@ -104,7 +103,7 @@ export default function CounsellorsPage() {
             return (
               <div
                 key={counsellor.slug}
-                className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter/70 shadow-[0_4px_18px_rgba(74,44,94,0.07)] transition-transform hover:-translate-y-0.5"
+                className="relative cursor-not-allowed overflow-hidden rounded-[24px] border border-warm-gray-lighter/70 shadow-[0_4px_18px_rgba(74,44,94,0.07)]"
               >
                 {/* cozy room scene as card background, art on the right */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -116,6 +115,12 @@ export default function CounsellorsPage() {
                 />
                 {/* left wash for text readability */}
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent" aria-hidden="true" />
+
+                {/* static "Not available" veil — always shown, not only on hover */}
+                <div className="pointer-events-none absolute inset-0 bg-plum/10" aria-hidden="true" />
+                <span className="absolute right-4 top-4 z-10 rounded-full bg-cream/95 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-plum shadow-[0_4px_16px_rgba(74,44,94,0.25)]">
+                  Not available
+                </span>
 
                 <div className="relative p-5 pr-28">
                   <div className="flex items-start justify-between">
@@ -156,12 +161,13 @@ export default function CounsellorsPage() {
                     <Clock size={12} /> Verification in progress
                   </span>
 
-                  <Link
-                    href={`/app/counsellor/${counsellor.slug}`}
-                    className="mt-3.5 flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#4A2060] via-[#8A3E78] to-[#C45D6E] py-2.5 text-[14px] font-bold text-white shadow-[0_4px_16px_rgba(138,62,120,0.35)] transition-transform hover:-translate-y-0.5"
+                  <span
+                    aria-disabled="true"
+                    title="Not available"
+                    className="mt-3.5 flex cursor-not-allowed items-center justify-center gap-2 rounded-full bg-plum/[0.08] py-2.5 text-[14px] font-bold text-plum/45"
                   >
-                    Preview profile <ArrowRight size={15} />
-                  </Link>
+                    Not available
+                  </span>
                 </div>
               </div>
             )

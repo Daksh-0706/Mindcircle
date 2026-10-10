@@ -39,6 +39,16 @@ const ICONS: Record<string, LucideIcon> = {
   Heart,
 }
 
+/**
+ * Sidebar entries that use custom artwork instead of a Lucide line icon. The
+ * artwork is a transparent silhouette used as a CSS mask, so it is painted in
+ * `currentColor` exactly like the line icons — idle keeps the muted charcoal,
+ * active turns cream on the plum tile.
+ */
+const MASK_ICONS: Record<string, string> = {
+  '/app/activities': '/activities/activities-icon.webp',
+}
+
 function isActive(pathname: string, href: string) {
   // Dashboard is the bare '/app' route; everything else is a nested path.
   if (href === '/app') return pathname === '/app'
@@ -99,6 +109,7 @@ export function SideNav({
         <ul className="space-y-0.5">
           {SIDEBAR_ITEMS.map((item) => {
             const Icon = ICONS[item.icon]
+            const maskSrc = MASK_ICONS[item.href]
             const active = isActive(pathname, item.href)
             return (
               <li key={item.href}>
@@ -118,7 +129,26 @@ export function SideNav({
                       active ? 'bg-plum text-cream' : 'bg-transparent text-charcoal/80',
                     )}
                   >
-                    <Icon size={18} strokeWidth={active ? 2.3 : 2} aria-hidden="true" />
+                    {maskSrc ? (
+                      <span
+                        aria-hidden="true"
+                        className="block bg-current"
+                        style={{
+                          width: 20,
+                          height: 20,
+                          WebkitMaskImage: `url(${maskSrc})`,
+                          maskImage: `url(${maskSrc})`,
+                          WebkitMaskRepeat: 'no-repeat',
+                          maskRepeat: 'no-repeat',
+                          WebkitMaskPosition: 'center',
+                          maskPosition: 'center',
+                          WebkitMaskSize: 'contain',
+                          maskSize: 'contain',
+                        }}
+                      />
+                    ) : (
+                      <Icon size={18} strokeWidth={active ? 2.3 : 2} aria-hidden="true" />
+                    )}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {active && <ChevronRight size={16} className="shrink-0 text-plum/60" />}

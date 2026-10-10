@@ -17,6 +17,7 @@ const activities = [
     duration: '5 min',
     level: 'Beginner',
     color: '#4A2C5E',
+    available: true,
   },
   {
     id: 'gratitude',
@@ -26,6 +27,7 @@ const activities = [
     duration: '10 min',
     level: 'Beginner',
     color: '#7B9E6B',
+    available: true,
   },
   {
     id: 'breathing',
@@ -35,6 +37,7 @@ const activities = [
     duration: '3 min',
     level: 'Beginner',
     color: '#C45D3E',
+    available: false,
   },
   {
     id: 'nature',
@@ -44,6 +47,7 @@ const activities = [
     duration: '15 min',
     level: 'All levels',
     color: '#5C7A4F',
+    available: false,
   },
   {
     id: 'creative',
@@ -53,6 +57,7 @@ const activities = [
     duration: '20 min',
     level: 'All levels',
     color: '#6B4A80',
+    available: false,
   },
   {
     id: 'detox',
@@ -62,6 +67,7 @@ const activities = [
     duration: '30 min',
     level: 'Intermediate',
     color: '#8A8A8A',
+    available: false,
   },
 ]
 
@@ -214,15 +220,17 @@ export default function ActivitiesPage() {
 }
 
 function ActivityCard({ activity, index, isMobile }: { activity: typeof activities[0]; index: number; isMobile: boolean }) {
+  const isUnavailable = !activity.available
   return (
     <motion.article
       initial={{ opacity: 0, y: 30, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: 0.3 + index * 0.08, type: 'spring', stiffness: 400, damping: 30 }}
-      whileHover={{ y: -4, scale: 1.01 }}
+      whileHover={isUnavailable ? undefined : { y: -4, scale: 1.01 }}
       className={cn(
         'glass-card rounded-2xl overflow-hidden relative group',
-        'transition-all duration-300 hover:shadow-strong'
+        'transition-all duration-300',
+        isUnavailable ? 'cursor-not-allowed' : 'hover:shadow-strong',
       )}
     >      {/* Cover image */}
       <div className="relative h-28 md:h-32 overflow-hidden bg-cream-dark">
@@ -230,9 +238,21 @@ function ActivityCard({ activity, index, isMobile }: { activity: typeof activiti
         <img
           src={activity.image}
           alt={activity.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className={cn(
+            'h-full w-full object-cover transition-transform duration-500',
+            isUnavailable ? 'opacity-80 grayscale-[0.35]' : 'group-hover:scale-105',
+          )}
         />
         <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/10 to-transparent" />
+
+        {/* Static "Not available" board — kept visible instead of only on hover */}
+        {isUnavailable && (
+          <div className="absolute inset-0 flex items-center justify-center bg-plum/20 backdrop-blur-[1.5px]">
+            <span className="rounded-full bg-cream/95 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-plum shadow-[0_4px_16px_rgba(74,44,94,0.25)]">
+              Not available
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="p-3.5 md:p-4">
@@ -256,16 +276,26 @@ function ActivityCard({ activity, index, isMobile }: { activity: typeof activiti
           {activity.description}
         </p>
 
-        <Link
-          href={`/app/activities/${activity.id}`}
-          className={cn(
-            'flex w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#5B4B9E] via-[#8A4E8E] to-[#D4674C] py-2.5 text-[13px] font-bold text-white',
-            'shadow-[0_4px_16px_rgba(138,78,142,0.35)] transition-all hover:shadow-strong group-hover:scale-[1.02]'
-          )}
-        >
-          Try Now
-          <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-        </Link>
+        {isUnavailable ? (
+          <span
+            aria-disabled="true"
+            title="Not available"
+            className="flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-full bg-plum/[0.08] py-2.5 text-[13px] font-bold text-plum/45"
+          >
+            Not available
+          </span>
+        ) : (
+          <Link
+            href={`/app/activities/${activity.id}`}
+            className={cn(
+              'flex w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#5B4B9E] via-[#8A4E8E] to-[#D4674C] py-2.5 text-[13px] font-bold text-white',
+              'shadow-[0_4px_16px_rgba(138,78,142,0.35)] transition-all hover:shadow-strong group-hover:scale-[1.02]'
+            )}
+          >
+            Try Now
+            <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        )}
       </div>
 
       {/* Completion indicator (mock) */}

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppNav } from '../../../../components/layout/AppNavContext'
 import Card from '../../../../components/ui/Card'
 import Button from '../../../../components/ui/Button'
-import { ArrowLeft, Clock3, Pause, Play, Wind } from 'lucide-react'
+import { ArrowLeft, Clock3, Pause, Play, Sparkles, Wind } from 'lucide-react'
 import NotoEmoji from '../../../../components/ui/NotoEmoji'
 
 const MEDITATION_SECONDS = 5 * 60 // 5:00
@@ -216,6 +216,114 @@ function MeditationPage() {
 }
 
 /**
+ * Gratitude Journaling — hero built around the gratitude-bg.webp illustration
+ * (the "JOURNALING" badge, title and duration pill sit over a soft cream wash
+ * so the plum copy stays readable), then three numbered step rows and a
+ * gradient "Start activity" CTA. Mirrors MeditationPage so every designed
+ * activity shares one visual language.
+ */
+const GRATITUDE_STEPS = [
+  { n: '01', title: 'Name one thing that felt good today.', body: 'It can be anything — big or small.' },
+  { n: '02', title: 'Write why it mattered to you.', body: 'Take a moment to reflect.' },
+  { n: '03', title: 'Notice how your body feels as you remember it.', body: 'Stay with the feeling for a few seconds.' },
+]
+
+function GratitudePage() {
+  const activity = details.gratitude
+
+  return (
+    <>
+      <AppNav title={activity.title} showBack />
+      {/*
+       * Single-screen layout on desktop — no page scroll (the reference design
+       * is one screen). The height budget is:
+       *   100vh − top bar (h-14 = 3.5rem) − main padding (pt-5 pb-6 = 2.75rem)
+       * with a little slack so rounding never produces a scrollbar. The hero is
+       * the flex child that absorbs the leftover space, but it is capped so it
+       * reads as a banner instead of ballooning on tall screens
+       * (min 180px, max 300px). Mobile keeps normal document flow.
+       */}
+      <div className="page-enter mx-auto flex w-full max-w-4xl flex-col px-4 pb-1 sm:px-6 lg:h-[calc(100vh-6.5rem)]">
+        <Link
+          href="/app/activities"
+          className="inline-flex shrink-0 items-center gap-2 text-sm text-warm-gray hover:text-plum"
+        >
+          <ArrowLeft size={16} /> Back to activities
+        </Link>
+
+        {/* ── Hero card · illustration background block ────────── */}
+        <section className="relative mt-2.5 flex min-h-[180px] flex-col justify-center overflow-hidden rounded-[28px] shadow-[0_8px_32px_rgba(74,44,94,0.16)] lg:min-h-[180px] lg:max-h-[300px] lg:flex-1">
+          {/* the gratitude illustration fills the whole block */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/activities/gratitude-bg.webp"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover object-right"
+          />
+          {/* soft left-to-right wash keeps the copy readable over the art */}
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-[#FDF4EC]/95 via-[#FDF4EC]/70 to-[#FDF4EC]/10"
+            aria-hidden="true"
+          />
+
+          <div className="relative p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#5B3E8E] shadow-sm backdrop-blur-sm">
+                <Sparkles size={13} /> Journaling
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/85 px-3 py-1.5 text-xs font-semibold text-[#3D2A52] shadow-sm backdrop-blur-sm">
+                <Clock3 size={13} /> {activity.duration} · Beginner
+              </span>
+            </div>
+
+            <h1 className="mt-2.5 max-w-lg font-display text-[28px] font-bold leading-[1.06] text-[#3D2A52] sm:text-[34px]">
+              {activity.title}
+            </h1>
+            <p className="mt-2 max-w-md text-sm leading-6 text-[#3D2A52]/75 sm:text-[15px]">
+              {activity.description}
+            </p>
+          </div>
+        </section>
+
+        {/* ── How it works · three numbered steps ──────────────── */}
+        <section className="mt-2.5 shrink-0 space-y-2">
+          {GRATITUDE_STEPS.map((step, index) => (
+            <motion.div
+              key={step.n}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 + index * 0.08, type: 'spring', stiffness: 300, damping: 24 }}
+              className="flex items-start gap-3 rounded-2xl border border-white/60 bg-white/70 px-3.5 py-2.5 shadow-[0_2px_14px_rgba(74,44,94,0.06)] backdrop-blur-sm"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#8B7BD8] to-[#D4674C] text-[11px] font-bold text-white shadow-sm">
+                {step.n}
+              </span>
+              <div className="pt-0.5">
+                <h3 className="font-heading text-[15px] font-bold leading-snug text-[#3D2A52]">{step.title}</h3>
+                <p className="mt-0.5 text-[13px] leading-5 text-warm-gray">{step.body}</p>
+              </div>
+            </motion.div>
+          ))}
+        </section>
+
+        {/* ── CTA · opens the journal to start writing ─────────── */}
+        <Link
+          href="/app/journal"
+          className="mt-2.5 flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#5B4B9E] via-[#8A4E8E] to-[#D4674C] px-8 py-3 text-base font-bold text-white shadow-[0_6px_20px_rgba(138,78,142,0.35)] transition-transform hover:-translate-y-0.5"
+        >
+          <Play size={18} /> Start activity
+        </Link>
+
+        <div className="mt-2.5 flex shrink-0 items-center justify-center gap-2 text-xs text-warm-gray">
+          <Wind size={14} /> Stop anytime and return when you feel ready.
+        </div>
+      </div>
+    </>
+  )
+}
+
+/**
  * Breathing circle — soft expanding rings around the meditation cutout.
  * Used in the hero and in the running-session panel.
  */
@@ -380,5 +488,6 @@ function SimpleActivityPage({ id }: { id: string }) {
 export default function ActivityDetailPage() {
   const { id } = useParams<{ id: string }>()
   if (id === 'meditation') return <MeditationPage />
+  if (id === 'gratitude') return <GratitudePage />
   return <SimpleActivityPage id={id ?? 'meditation'} />
 }
