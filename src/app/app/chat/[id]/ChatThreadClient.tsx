@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Skeleton from '../../../../components/ui/Skeleton'
-import { Camera, ChevronLeft, Image as ImageIcon, Loader2, Send, X } from 'lucide-react'
+import { Camera, ChevronLeft, Image as ImageIcon, Loader2, Send, SwitchCamera, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { MAX_IMAGES_PER_MESSAGE as MAX_IMAGES } from '@/lib/chat/limits'
 import { formatTime } from '../../../../lib/dates'
@@ -134,6 +134,9 @@ export default function ChatDetailPage() {
   const [uploading, setUploading] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraError, setCameraError] = useState('')
+  // Which camera the capture sheet streams: 'environment' is the rear camera
+  // on a phone, 'user' the front/selfie one. Toggled by the flip button.
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment')
   // Caption typed over a picked image. Kept apart from `message` so closing
   // the preview without sending does not leave stray text in the composer.
   const [caption, setCaption] = useState('')
@@ -149,21 +152,43 @@ export default function ChatDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Live camera preview while the capture sheet is open.
+  // Live camera preview while the capture sheet is open. Re-runs when the user
+  // flips between the front and rear camera, tearing the old stream down first.
   useEffect(() => {
     if (!cameraOpen) return
     let stream: MediaStream | undefined
-    navigator.mediaDevices
-      ?.getUserMedia({ video: { facingMode: 'environment' } })
-      .then((next) => {
+    let cancelled = false
+
+    const open = async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('unsupported')
+        }
+        // Prefer the requested lens. Some desktop webcams reject a facing mode
+        // they do not have, so fall back to whatever camera is available.
+        const next = await navigator.mediaDevices
+          .getUserMedia({ video: { facingMode } })
+          .catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
+        if (cancelled) {
+          next.getTracks().forEach((track) => track.stop())
+          return
+        }
         stream = next
+        setCameraError('')
         if (videoRef.current) videoRef.current.srcObject = next
-      })
-      .catch(() =>
-        setCameraError('Camera access was unavailable. You can still pick an image.'),
-      )
-    return () => stream?.getTracks().forEach((track) => track.stop())
-  }, [cameraOpen])
+      } catch {
+        if (!cancelled) {
+          setCameraError('Camera access was unavailable. You can still pick an image.')
+        }
+      }
+    }
+    void open()
+
+    return () => {
+      cancelled = true
+      stream?.getTracks().forEach((track) => track.stop())
+    }
+  }, [cameraOpen, facingMode])
 
   /**
    * Adds one or more picked files to the pending set.
@@ -209,7 +234,16 @@ export default function ChatDetailPage() {
     if (!video || !canvas || !video.videoWidth) return
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
-    canvas.getContext('2d')?.drawImage(video, 0, 0)
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      // The front-camera preview is mirrored, so mirror the capture to match
+      // what the user saw rather than flipping it after the fact.
+      if (facingMode === 'user') {
+        ctx.translate(canvas.width, 0)
+        ctx.scale(-1, 1)
+      }
+      ctx.drawImage(video, 0, 0)
+    }
     canvas.toBlob(
       (blob) => {
         if (blob) void pickFiles([new File([blob], 'photo.jpg', { type: 'image/jpeg' })])
@@ -732,11 +766,12 @@ export default function ChatDetailPage() {
                 muted
                 playsInline
                 className="h-full w-full object-cover"
+                style={facingMode === 'user' ? { transform: 'scaleX(-1)' } : undefined}
               />
             )}
             <canvas ref={canvasRef} className="hidden" />
           </div>
-          <div className="flex items-center justify-center gap-6 p-6">
+          <div className="grid grid-cols-3 items-center justify-items-center gap-2 p-6">
             <button
               type="button"
               onClick={() => {
@@ -754,7 +789,16 @@ export default function ChatDetailPage() {
               aria-label="Capture photo"
               className="h-16 w-16 rounded-full border-4 border-cream bg-plum transition-transform active:scale-95 disabled:opacity-40"
             />
-            <span className="w-[74px]" />
+            <button
+              type="button"
+              onClick={() =>
+                setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'))
+              }
+              aria-label="Switch camera"
+              className="flex items-center gap-2 rounded-full border border-cream/30 px-4 py-3 text-sm font-semibold text-cream"
+            >
+              <SwitchCamera size={16} /> Switch
+            </button>
           </div>
         </div>
       )}

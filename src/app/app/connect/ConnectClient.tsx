@@ -15,6 +15,7 @@ import {
   Plus,
   Share2,
   Sparkles,
+  SwitchCamera,
   Trash2,
   UserPlus,
   X,
@@ -223,6 +224,8 @@ export default function ConnectPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraError, setCameraError] = useState('')
+  // Which lens the story camera streams: 'environment' = rear, 'user' = front.
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment')
   const [photo, setPhoto] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -294,12 +297,38 @@ export default function ConnectPage() {
   useEffect(() => {
     if (!cameraOpen) return
     let stream: MediaStream | undefined
-    navigator.mediaDevices?.getUserMedia({ video: true }).then((nextStream) => {
-      stream = nextStream
-      if (videoRef.current) videoRef.current.srcObject = nextStream
-    }).catch(() => setCameraError('Camera access was unavailable. You can still create a story with text.'))
-    return () => stream?.getTracks().forEach((track) => track.stop())
-  }, [cameraOpen])
+    let cancelled = false
+
+    const open = async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported')
+        // Prefer the requested lens; fall back to any camera when a device
+        // (e.g. a desktop webcam) does not expose the one we asked for.
+        const next = await navigator.mediaDevices
+          .getUserMedia({ video: { facingMode } })
+          .catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
+        if (cancelled) {
+          next.getTracks().forEach((track) => track.stop())
+          return
+        }
+        stream = next
+        setCameraError('')
+        if (videoRef.current) videoRef.current.srcObject = next
+      } catch {
+        if (!cancelled) {
+          setCameraError(
+            'Camera access was unavailable. You can still create a story with text.',
+          )
+        }
+      }
+    }
+    void open()
+
+    return () => {
+      cancelled = true
+      stream?.getTracks().forEach((track) => track.stop())
+    }
+  }, [cameraOpen, facingMode])
 
   const takePhoto = () => {
     const video = videoRef.current
@@ -307,7 +336,15 @@ export default function ConnectPage() {
     if (!video || !canvas || !video.videoWidth) return
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
-    canvas.getContext('2d')?.drawImage(video, 0, 0)
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      // Mirror the front-camera capture so the saved story matches the preview.
+      if (facingMode === 'user') {
+        ctx.translate(canvas.width, 0)
+        ctx.scale(-1, 1)
+      }
+      ctx.drawImage(video, 0, 0)
+    }
     const captured = canvas.toDataURL('image/jpeg', 0.9)
     setPhoto(captured)
     setPostError('')
@@ -567,14 +604,14 @@ export default function ConnectPage() {
               <button type="button" onClick={() => setCameraOpen(false)} aria-label="Close camera" className="rounded-full p-2 hover:bg-white/10"><X size={20} /></button>
             </div>
             <div className="relative aspect-[4/3] bg-plum/30">
-              {photo ? <img src={photo} alt="Captured story preview" className="h-full w-full object-cover" /> : <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />}
+              {photo ? <img src={photo} alt="Captured story preview" className="h-full w-full object-cover" /> : <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" style={facingMode === 'user' ? { transform: 'scaleX(-1)' } : undefined} />}
               <canvas ref={canvasRef} className="hidden" />
               <div className="pointer-events-none absolute inset-8 rounded-[24px] border border-cream/40" />
               {cameraError && !photo && <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-xl bg-charcoal/80 p-4 text-center text-sm text-cream">{cameraError}</p>}
             </div>
-            <div className="flex items-center justify-center gap-4 px-5 py-5">
+            <div className="px-5 py-5">
               {photo ? (
-                <>
+                <div className="flex items-center justify-center gap-4">
                   <button type="button" onClick={() => setPhoto(null)} disabled={posting} className="rounded-full border border-cream/30 px-4 py-3 text-sm text-cream disabled:opacity-40">Retake</button>
                   <button
                     type="button"
@@ -585,9 +622,22 @@ export default function ConnectPage() {
                     {posting && <Loader2 size={15} className="animate-spin" />}
                     {posting ? 'Sharing…' : 'Share story'}
                   </button>
-                </>
+                </div>
               ) : (
-                <button type="button" onClick={takePhoto} className="flex h-14 w-14 items-center justify-center rounded-full bg-cream text-plum" aria-label="Take photo"><Camera size={23} /></button>
+                <div className="grid grid-cols-3 items-center justify-items-center">
+                  <span />
+                  <button type="button" onClick={takePhoto} className="flex h-14 w-14 items-center justify-center rounded-full bg-cream text-plum" aria-label="Take photo"><Camera size={23} /></button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'))
+                    }
+                    aria-label="Switch camera"
+                    className="flex h-14 w-14 items-center justify-center rounded-full border border-cream/30 text-cream transition-colors hover:bg-white/10"
+                  >
+                    <SwitchCamera size={22} />
+                  </button>
+                </div>
               )}
             </div>
             {postError && <p role="alert" className="mx-5 mb-4 rounded-xl bg-charcoal/80 px-4 py-3 text-center text-sm text-cream">{postError}</p>}
