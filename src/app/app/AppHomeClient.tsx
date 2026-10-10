@@ -32,16 +32,6 @@ function relativeDays(iso: string) {
   return `${days} days ago`
 }
 
-/** Pastel tile background per mood, in the same order as MOOD_EMOJIS. */
-const MOOD_TILE_BG = [
-  'rgba(123,158,107,0.14)', // Happy — sage tint
-  'rgba(74,44,94,0.10)', // Peaceful — plum tint
-  'rgba(196,93,62,0.10)', // Neutral — terracotta tint
-  'rgba(214,69,69,0.10)', // Frustrated — red tint
-  'rgba(107,140,186,0.14)', // Anxious — blue tint
-  'rgba(155,107,158,0.14)', // Sad — purple tint
-] as const
-
 function greetingFor(hour: number) {
   if (hour < 5) return 'Still awake'
   if (hour < 12) return 'Good morning'
@@ -64,6 +54,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [now] = useState(() => new Date())
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
+  const [savingMood, setSavingMood] = useState(false)
+  const [moodSaved, setMoodSaved] = useState(false)
+  const [moodError, setMoodError] = useState('')
   /** True until the 4-step setup is finished, so we can nudge about it. */
   const [needsSetup, setNeedsSetup] = useState(false)
   const [setupHidden, setSetupHidden] = useState(false)
@@ -94,6 +87,34 @@ export default function DashboardPage() {
   }, [])
 
   const displayName = firstName || 'friend'
+
+  // ── Save a mood check-in ─────────────────────────────────────
+  const handleSaveMood = async () => {
+    const mood = MOOD_EMOJIS.find((m) => m.label === selectedMood)
+    if (!mood || savingMood) return
+
+    setSavingMood(true)
+    setMoodError('')
+    try {
+      const res = await fetch('/api/mood', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mood_score: mood.score, mood_emoji: mood.emoji, note: '' }),
+      })
+      if (!res.ok) throw new Error('Could not save your mood. Please try again.')
+      // Prepend the fresh row so the "This Week" stats and weekday dots
+      // update without a reload.
+      const saved = (await res.json().catch(() => null))?.data as MoodLog | undefined
+      if (saved) setMoodLogs((prev) => [saved, ...prev])
+      setMoodSaved(true)
+      setSelectedMood(null)
+      window.setTimeout(() => setMoodSaved(false), 2000)
+    } catch (e) {
+      setMoodError(e instanceof Error ? e.message : 'Something went wrong.')
+    } finally {
+      setSavingMood(false)
+    }
+  }
 
   // ── Week stats ──────────────────────────────────────────────
   const dayMs = 86400000
@@ -183,14 +204,48 @@ export default function DashboardPage() {
         </section>
 
         {/* ── How are you feeling? ─────────────────────────────── */}
-        <section className="rounded-[24px] border border-warm-gray-lighter bg-white/80 p-6 shadow-[0px_4px_16px_#4A2C5E08] sm:p-7">
-          <div className="mb-1">
-            <h2 className="font-heading text-[22px] font-bold text-charcoal">How are you feeling?</h2>
-            <p className="mt-1 text-sm text-warm-gray">Tap an emoji to log your mood</p>
+        <section className="rounded-[24px] border border-warm-gray-lighter bg-white/80 px-6 py-8 shadow-[0px_4px_16px_#4A2C5E08] sm:px-9 sm:py-10">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-heading text-[26px] font-bold leading-tight text-charcoal sm:text-[30px]">
+                How are you feeling?
+              </h2>
+              <p className="mt-2 text-[15px] text-warm-gray sm:text-base">Tap an emoji to log your mood</p>
+            </div>
+
+            {/* Top-right save — always visible; dimmed until a mood is picked */}
+            <button
+              type="button"
+              onClick={handleSaveMood}
+              disabled={!selectedMood || savingMood}
+              aria-label="Save mood"
+              className={cn(
+                'flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-bold',
+                'sm:px-5 sm:py-2.5 sm:text-sm',
+                'transition-all duration-200',
+                moodSaved
+                  ? 'bg-sage text-white'
+                  : selectedMood
+                    ? 'btn-gradient shadow-medium hover:-translate-y-0.5'
+                    : 'bg-warm-gray-lighter text-warm-gray',
+              )}
+            >
+              {moodSaved ? (
+                <>
+                  <Check size={15} strokeWidth={3} aria-hidden="true" /> Saved
+                </>
+              ) : savingMood ? (
+                'Saving…'
+              ) : (
+                'Save'
+              )}
+            </button>
           </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-3">
-            {MOOD_EMOJIS.map((mood, i) => {
+          {/* Airy 3-up grid: a big3D emoji floating over its own soft pastel
+              pill, no tile background — the chip is the only color. */}
+          <div className="mt-7 grid grid-cols-3 gap-x-3 gap-y-7 sm:mt-9 sm:gap-x-6 sm:gap-y-10">
+            {MOOD_EMOJIS.map((mood) => {
               const isSelected = selectedMood === mood.label
               return (
                 <button
@@ -198,20 +253,47 @@ export default function DashboardPage() {
                   type="button"
                   aria-pressed={isSelected}
                   onClick={() => setSelectedMood(isSelected ? null : mood.label)}
-                  className={cn(
-                    'flex flex-col items-center gap-2 rounded-2xl px-2 py-5 transition-all',
-                    'hover:-translate-y-0.5 active:scale-95',
-                    isSelected ? 'ring-2 ring-plum/50' : '',
-                  )}
-                  style={{ backgroundColor: MOOD_TILE_BG[i] }}
+                  className="group flex flex-col items-center gap-3 rounded-2xl outline-none sm:gap-4"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={mood.image} alt="" draggable={false} className="h-11 w-11 select-none sm:h-12 sm:w-12" />
-                  <span className="text-[15px] text-charcoal">{mood.label}</span>
+                  <img
+                    src={mood.image}
+                    alt=""
+                    draggable={false}
+                    className={cn(
+                      'h-12 w-12 select-none transition-transform duration-200 sm:h-[68px] sm:w-[68px]',
+                      'group-hover:scale-105 group-active:scale-95',
+                      isSelected && 'scale-110',
+                    )}
+                  />
+                  {/* Mobile keeps the chip small enough that the longest
+                      label ("Frustrated") still fits inside a 3-up column. */}
+                  <span
+                    className={cn(
+                      'flex min-h-10 max-w-full items-center justify-center rounded-full px-3',
+                      'text-[13px] font-medium text-charcoal transition-all duration-200',
+                      'sm:min-h-12 sm:px-7 sm:text-[17px]',
+                      isSelected && 'font-semibold',
+                    )}
+                    style={{
+                      backgroundColor: mood.pill,
+                      boxShadow: isSelected
+                        ? `0 0 0 2px ${mood.color}66, 0 8px 20px ${mood.color}33`
+                        : '0 2px 8px rgba(74,44,94,0.05)',
+                    }}
+                  >
+                    {mood.label}
+                  </span>
                 </button>
               )
             })}
           </div>
+
+          {moodError && (
+            <p role="alert" className="mt-5 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
+              {moodError}
+            </p>
+          )}
         </section>
 
         {/* ── This Week ────────────────────────────────────────── */}

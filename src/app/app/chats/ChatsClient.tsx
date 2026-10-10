@@ -170,7 +170,10 @@ export default function ChatsPage() {
                   const theme = CHAT_ART[(i + 2) % CHAT_ART.length]
                   return (
                     <Link
-                      href={`/app/profile/${thread.participant_id}`}
+                      // The row *is* the conversation, so it opens the thread.
+                      // (New Chat links the same way; a profile is reached from
+                      // inside the thread, not by tapping the message list.)
+                      href={`/app/chat/${thread.participant_id}`}
                       key={thread.participant_id}
                       className={cn(
                         'relative flex items-center gap-3.5 overflow-hidden rounded-[20px] border border-warm-gray-lighter/60 p-3 pr-5 transition-transform hover:-translate-y-0.5',

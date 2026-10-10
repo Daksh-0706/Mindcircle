@@ -70,7 +70,13 @@ export async function GET(request: Request) {
     // message because the query is newest-first.
     const threads = new Map<
       string,
-      { participant_id: string; last_message: string; last_at: string; unread: number }
+      {
+        participant_id: string
+        last_message: string
+        last_at: string
+        from_peer: boolean
+        unread: number
+      }
     >()
     for (const dm of mine ?? []) {
       const other = dm.sender_id === user.id ? dm.receiver_id : dm.sender_id
@@ -79,6 +85,10 @@ export async function GET(request: Request) {
           participant_id: other,
           last_message: dm.content,
           last_at: dm.created_at,
+          // Who sent the newest message. Without it the client cannot tell
+          // "they wrote to me" from "I replied last", and would announce my
+          // own message back at me.
+          from_peer: dm.sender_id !== user.id,
           unread: 0,
         })
       }
@@ -88,10 +98,18 @@ export async function GET(request: Request) {
     }
 
     // Drop threads whose participant no longer exists (stale references).
-    const { data: allUsers } = await supabase
-      .from('users')
-      .select('id, email, alias, avatar_emoji')
-    const byId = new Map((allUsers ?? []).map((u) => [u.id, u]))
+    // Scoped to the peers we actually have a thread with — this list backs the
+    // notification poll too, so pulling every user on every call would not scale.
+    const peerIds = [...threads.keys()]
+    let allUsers: { id: string; email: string | null; alias: string | null; avatar_emoji: string | null }[] = []
+    if (peerIds.length > 0) {
+      const { data } = await supabase
+        .from('users')
+        .select('id, email, alias, avatar_emoji')
+        .in('id', peerIds)
+      allUsers = data ?? []
+    }
+    const byId = new Map(allUsers.map((u) => [u.id, u]))
     const liveThreads = [...threads.values()]
       .filter((t) => byId.has(t.participant_id))
       // Blocked conversations disappear from the list, same as the directory.

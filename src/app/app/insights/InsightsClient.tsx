@@ -107,6 +107,24 @@ export default function InsightsPage() {
   }, [filtered])
   const maxDistDays = Math.max(1, ...distribution.map((d) => d.days))
 
+  // The check-in picked today on the dashboard. `/api/mood` returns logs
+  // newest-first, so the first match is today's most recent save.
+  const todayMood = useMemo(() => {
+    const today = new Date(now).toDateString()
+    return logs.find((l) => new Date(l.created_at).toDateString() === today) ?? null
+  }, [logs, now])
+  const todayMoodMeta = todayMood
+    ? (MOOD_EMOJIS.find((m) => m.emoji === todayMood.mood_emoji) ?? null)
+    : null
+  const todayColor = todayMood ? moodColor(todayMood.mood_score) : '#6B4A80'
+  const todayBand = todayMood
+    ? todayMood.mood_score >= 7
+      ? 'Good'
+      : todayMood.mood_score >= 5
+        ? 'Okay'
+        : 'Heavy'
+    : ''
+
   const avg = filtered.length
     ? (filtered.reduce((sum, l) => sum + l.mood_score, 0) / filtered.length).toFixed(1)
     : '—'
@@ -231,6 +249,7 @@ export default function InsightsPage() {
             </div>
 
             <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-6">
+              <div className="space-y-4 lg:space-y-6">
               {/* Mood distribution */}
               <div className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter bg-white shadow-[0px_4px_16px_#4A2C5E08]">
                 {/* soft waves + leaves background */}
@@ -268,6 +287,63 @@ export default function InsightsPage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Mood today — the check-in picked on the dashboard */}
+              <div className="rounded-[24px] border border-warm-gray-lighter bg-white p-5 shadow-[0px_4px_16px_#4A2C5E08] sm:p-7">
+                <div className="mb-5">
+                  <h2 className="font-heading text-[22px] font-bold text-[#4A2C6E]">Mood today</h2>
+                  <p className="mt-1 text-[13px] text-warm-gray">What you picked in “How are you feeling?”</p>
+                </div>
+
+                {todayMood ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <span
+                        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full"
+                        style={{ backgroundColor: todayMoodMeta?.pill ?? '#F3EFFF' }}
+                      >
+                        <NotoEmoji emoji={todayMood.mood_emoji} size={34} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[18px] font-bold text-charcoal">
+                          {todayMoodMeta?.label ?? 'Check-in'}
+                        </p>
+                        <p className="mt-0.5 text-[13px] text-warm-gray">
+                          Logged at {formatTime(todayMood.created_at)} · {todayBand}
+                        </p>
+                      </div>
+                      <span
+                        className="shrink-0 rounded-full px-4 py-1.5 text-[13px] font-bold"
+                        style={{ backgroundColor: `${todayColor}22`, color: todayColor }}
+                      >
+                        {todayMood.mood_score}/10
+                      </span>
+                    </div>
+
+                    {/* Same bar language as the distribution rows above */}
+                    <div className="h-2.5 rounded-full bg-[#EFE6DC]">
+                      <div
+                        className={`h-2.5 rounded-full ${BAR_COLORS[todayMood.mood_emoji] ?? 'bg-plum'}`}
+                        style={{ width: `${Math.max(4, Math.min(100, todayMood.mood_score * 10))}%` }}
+                      />
+                    </div>
+
+                    {todayMood.note?.trim() && (
+                      <p className="rounded-2xl bg-[#F7F3FB] px-4 py-3 text-[14px] leading-6 text-charcoal/85">
+                        “{todayMood.note.trim()}”
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-warm-gray-lighter bg-[#FCFAF8] px-5 py-8 text-center">
+                    <p className="text-[15px] font-semibold text-charcoal">No check-in yet today</p>
+                    <p className="mt-1 text-[13px] leading-5 text-warm-gray">
+                      Tap an emoji under “How are you feeling?” on the dashboard and it will show up here.
+                    </p>
+                  </div>
+                )}
+              </div>
               </div>
 
               {/* Reflection metrics — themed stat rows */}
@@ -336,6 +412,11 @@ export default function InsightsPage() {
       </div>
     </>
   )
+}
+
+/** "4:12 PM" — used by the Mood today card. */
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
 /**

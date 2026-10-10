@@ -28,14 +28,15 @@ export const SIDEBAR_ITEMS = [
  * 1–10 scale. They used to be 1–5, which meant even a perfect check-in scored
  * half-height on the graph and could never reach the "good" band.
  * The relative order and gaps are unchanged (each old value ×2).
+ * `pill` is the soft pastel chip behind the label in the dashboard picker.
  */
 export const MOOD_EMOJIS = [
-  { emoji: '😊', image: '/emojis/happy.webp', label: 'Happy', color: '#F4C542', score: 10 },
-  { emoji: '😌', image: '/emojis/peaceful.webp', label: 'Peaceful', color: '#7B9E6B', score: 8 },
-  { emoji: '😐', image: '/emojis/neutral.webp', label: 'Neutral', color: '#8A8A8A', score: 6 },
-  { emoji: '😤', image: '/emojis/frustrated.webp', label: 'Frustrated', color: '#C45D3E', score: 4 },
-  { emoji: '😰', image: '/emojis/anxious.webp', label: 'Anxious', color: '#9B6B9E', score: 4 },
-  { emoji: '😔', image: '/emojis/sad.webp', label: 'Sad', color: '#6B8CBA', score: 2 },
+  { emoji: '😊', image: '/emojis/happy.webp', label: 'Happy', color: '#F4C542', pill: '#E4EDE1', score: 10 },
+  { emoji: '😌', image: '/emojis/peaceful.webp', label: 'Peaceful', color: '#7B9E6B', pill: '#EFEBF5', score: 8 },
+  { emoji: '😐', image: '/emojis/neutral.webp', label: 'Neutral', color: '#8A8A8A', pill: '#FAECE3', score: 6 },
+  { emoji: '😤', image: '/emojis/frustrated.webp', label: 'Frustrated', color: '#C45D3E', pill: '#FBE8E8', score: 4 },
+  { emoji: '😰', image: '/emojis/anxious.webp', label: 'Anxious', color: '#9B6B9E', pill: '#E3EDF7', score: 4 },
+  { emoji: '😔', image: '/emojis/sad.webp', label: 'Sad', color: '#6B8CBA', pill: '#EDEAF7', score: 2 },
 ] as const
 
 export const FEATURES = [

@@ -53,17 +53,25 @@ export async function GET(
   }
 
   // Both directions, because the pair is stored canonically — we do not know
-  // from here whether we are user_a or user_b.
+  // from here whether we are user_a or user_b. Read the row at *any* status so
+  // an accepted connection and a pending request are told apart: a private
+  // profile someone has already asked to connect on must offer "Accept", not
+  // another "Send connection request".
   const { data: link, error: linkError } = await supabase
     .from('connections')
-    .select('status')
+    .select('status, user_a, user_b')
     .or(`and(user_a.eq.${user.id},user_b.eq.${personId}),and(user_a.eq.${personId},user_b.eq.${user.id})`)
-    .eq('status', 'accepted')
     .maybeSingle()
 
   if (linkError) {
     return serverError('profile connection check', linkError)
   }
+
+  const accepted = link?.status === 'accepted'
+  // The pair is ordered (user_a, user_b), so being user_b is what makes a
+  // pending row a request *to* us rather than one *from* us.
+  const pendingRequest =
+    link?.status === 'pending' ? (link.user_b === user.id ? 'incoming' : 'outgoing') : null
 
   const { data: person, error } = await supabase
     .from('users')
@@ -80,7 +88,7 @@ export async function GET(
 
   // Private profile with no accepted connection: identify them, reveal nothing
   // else. The client renders the "send a request to view" screen from this.
-  if (!person.is_public && !link) {
+  if (!person.is_public && !accepted) {
     return NextResponse.json({
       person: {
         id: person.id,
@@ -90,6 +98,7 @@ export async function GET(
         is_public: false,
         locked: true,
         connected: false,
+        pending_request: pendingRequest,
       },
     })
   }
@@ -111,8 +120,9 @@ export async function GET(
       locked: false,
       // Whether the row opens the mood insights screen. The API enforces the
       // opt-in itself; this only lets the UI word the link honestly.
-      share_moods: Boolean(person.share_moods) && Boolean(link),
-      connected: Boolean(link),
+      share_moods: Boolean(person.share_moods) && accepted,
+      connected: accepted,
+      pending_request: pendingRequest,
       joined: person.created_at,
     },
   })

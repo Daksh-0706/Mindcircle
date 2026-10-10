@@ -8,6 +8,7 @@ import { AppNav } from '../../../components/layout/AppNavContext'
 import EmptyState from '../../../components/ui/EmptyState'
 import Skeleton from '../../../components/ui/Skeleton'
 import NotoEmoji from '../../../components/ui/NotoEmoji'
+import { rememberMyRequests } from '../../../lib/my-requests'
 import { cn } from '../../../lib/utils'
 
 /** How the viewer relates to a person in the directory. */
@@ -111,8 +112,27 @@ export default function DiscoverClient() {
       const text = await res.text()
       console.log('[Discover] POST /api/connections response:', res.status, text.slice(0, 500))
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error || 'Could not send the request.')
+        // The body is already consumed by `text()`, so parse it here rather
+        // than calling `.json()`, which would reject and swallow the message.
+        let message = 'Could not send the request.'
+        try {
+          const parsed = JSON.parse(text) as { error?: string }
+          if (parsed?.error) message = parsed.error
+        } catch {
+          // Non-JSON error body — keep the generic message.
+        }
+        throw new Error(message)
+      }
+      // Remember the row we just created so the bell can announce it when the
+      // other person accepts. Only reached from the "no connection yet" state,
+      // so `created` is what tells us we really are the sender.
+      try {
+        const sent = JSON.parse(text) as { created?: boolean; data?: { id?: string; status?: string } }
+        if (sent.created && sent.data?.status === 'pending' && sent.data.id) {
+          rememberMyRequests([sent.data.id])
+        }
+      } catch {
+        // Unparsable body — the notification poll harvests outgoing rows anyway.
       }
       await load(query)
     } catch (e) {
@@ -353,8 +373,16 @@ const viewable = true
                   ) : (
                     <button
                       type="button"
-                      onClick={() => (sent ? withdraw(person.id) : connect(person.id))}
-                      disabled={working || incoming}
+                      onClick={() =>
+                        // An incoming request is accepted by the recipient, so it
+                        // gets the PATCH rather than the send/withdraw toggle.
+                        incoming
+                          ? acceptRequest(person.id)
+                          : sent
+                            ? withdraw(person.id)
+                            : connect(person.id)
+                      }
+                      disabled={working}
                       className={cn(
                         'mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-bold transition-all',
                         sent || incoming
@@ -371,7 +399,7 @@ const viewable = true
                         <>
                           <Check size={15} aria-hidden="true" /> Accept
                         </>
-                      )                      : sent ? (
+                      ) : sent ? (
                         <>
                           {/* Tapping again withdraws the request. */}
                           <X size={15} aria-hidden="true" /> Pending

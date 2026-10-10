@@ -13,6 +13,7 @@ import {
   Sparkles,
   UserPlus,
   UserRound,
+  UserCheck,
   Ban,
 } from 'lucide-react'
 import Skeleton from '@/components/ui/Skeleton'
@@ -20,6 +21,7 @@ import ReportDialog from '@/components/ui/ReportDialog'
 import BlockDialog from '@/components/ui/BlockDialog'
 import NotoEmoji from '@/components/ui/NotoEmoji'
 import { AppNav } from '@/components/layout/AppNavContext'
+import { rememberMyRequests } from '@/lib/my-requests'
 import { cn } from '@/lib/utils'
 
 type Person = {
@@ -41,6 +43,12 @@ type Person = {
   locked: boolean
   share_moods: boolean
   connected: boolean
+  /**
+   * A pending connection row between us and this person: `incoming` = they
+   * asked us (so the primary button becomes "Accept request"), `outgoing` =
+   * we are waiting on them.
+   */
+  pending_request: 'incoming' | 'outgoing' | null
   joined: string
 }
 
@@ -103,6 +111,9 @@ export default function ProfileClient() {
 
   const connect = async () => {
     if (requesting || !person) return
+    // With a pending request from them the same POST accepts it server-side,
+    // so one handler covers both "send" and "accept" — only the wording differs.
+    const accepting = person.pending_request === 'incoming'
     setRequesting(true)
     try {
       const res = await fetch('/api/connections', {
@@ -111,10 +122,21 @@ export default function ProfileClient() {
         body: JSON.stringify({ user_id: person.id }),
       })
       if (!res.ok) throw new Error('Could not send the request.')
+      // Remember a row we actually created, so the bell can later say who
+      // accepted it. When `accepting` the row was theirs already, and a row that
+      // already existed means we are not the sender — both are left alone.
+      if (!accepting) {
+        const sent = (await res.json().catch(() => null)) as
+          | { created?: boolean; data?: { id?: string; status?: string } }
+          | null
+        if (sent?.created && sent.data?.status === 'pending' && sent.data?.id) {
+          rememberMyRequests([sent.data.id])
+        }
+      }
       // The endpoint auto-accepts when they had asked us first, so re-read the
       // state instead of assuming we are now pending.
       await load()
-      setNotice('Request sent.')
+      setNotice(accepting ? 'Request accepted. You are connected.' : 'Request sent.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.')
     } finally {
@@ -152,6 +174,10 @@ export default function ProfileClient() {
         locked: Boolean(raw.locked),
         share_moods: Boolean(raw.share_moods),
         connected: Boolean(raw.connected),
+        pending_request:
+          raw.pending_request === 'incoming' || raw.pending_request === 'outgoing'
+            ? raw.pending_request
+            : null,
         joined: raw.joined ?? '',
       })
       setError('')
@@ -301,12 +327,24 @@ export default function ProfileClient() {
                   <button
                     type="button"
                     onClick={connect}
-                    disabled={requesting}
+                    disabled={requesting || person.pending_request === 'outgoing'}
                     className="flex flex-col items-center gap-2 rounded-[20px] bg-plum px-3 py-5 text-white transition-transform hover:-translate-y-0.5 disabled:opacity-50"
                   >
-                    <UserPlus size={24} aria-hidden="true" />
+                    {person.pending_request === 'incoming' ? (
+                      <UserCheck size={24} aria-hidden="true" />
+                    ) : (
+                      <UserPlus size={24} aria-hidden="true" />
+                    )}
                     <span className="text-center text-[13px] font-bold leading-4">
-                      {requesting ? 'Sending…' : 'Send connection request'}
+                      {requesting
+                        ? person.pending_request === 'incoming'
+                          ? 'Accepting…'
+                          : 'Sending…'
+                        : person.pending_request === 'incoming'
+                          ? 'Accept request'
+                          : person.pending_request === 'outgoing'
+                            ? 'Request sent'
+                            : 'Send connection request'}
                     </span>
                   </button>
                   <button
@@ -332,12 +370,24 @@ export default function ProfileClient() {
                 <button
                   type="button"
                   onClick={connect}
-                  disabled={requesting}
+                  disabled={requesting || person.pending_request === 'outgoing'}
                   className="flex flex-col items-center gap-2 rounded-[20px] bg-[#EFEAFB] px-4 py-5 text-plum transition-transform hover:-translate-y-0.5 disabled:opacity-50"
                 >
-                  <UserPlus size={24} aria-hidden="true" />
+                  {person.pending_request === 'incoming' ? (
+                    <UserCheck size={24} aria-hidden="true" />
+                  ) : (
+                    <UserPlus size={24} aria-hidden="true" />
+                  )}
                   <span className="text-[15px] font-bold">
-                    {requesting ? 'Sending…' : 'Connect'}
+                    {requesting
+                      ? person.pending_request === 'incoming'
+                        ? 'Accepting…'
+                        : 'Sending…'
+                      : person.pending_request === 'incoming'
+                        ? 'Accept request'
+                        : person.pending_request === 'outgoing'
+                          ? 'Request sent'
+                          : 'Connect'}
                   </span>
                 </button>
               )}
@@ -369,7 +419,11 @@ export default function ProfileClient() {
                     This is a private profile
                   </p>
                   <p className="mt-1 text-[13.5px] leading-6 text-charcoal/60">
-                    Send a connection request to view their profile and interact with them.
+                    {person.pending_request === 'incoming'
+                      ? 'They sent you a connection request — accept it to view their profile and interact with them.'
+                      : person.pending_request === 'outgoing'
+                        ? 'Your connection request is waiting for them to accept. You can view their profile once they do.'
+                        : 'Send a connection request to view their profile and interact with them.'}
                   </p>
                 </div>
               </section>
