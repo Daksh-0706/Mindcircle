@@ -20,9 +20,9 @@ type MoodLog = { id: string; mood_score: number; created_at: string }
 type JournalEntry = { id: string; content: string; created_at: string }
 
 const activities = [
-  { image: '/activities/breathing.png', title: 'Box breathing exercise', detail: 'Duration: 4 mins • Anxiety release', bg: 'rgba(123,158,107,0.08)', href: '/app/activities' },
-  { image: '/activities/journaling.png', title: 'Write placement worries', detail: 'Duration: 10 mins • Grounding therapy', bg: 'rgba(74,44,94,0.10)', href: '/app/journal' },
-  { image: '/activities/anxiety-relief.png', title: 'Anxiety release audio', detail: 'Duration: 6 mins • Calm guidance', bg: 'rgba(196,93,62,0.10)', href: '/app/activities' },
+  { image: '/activities/breathing.webp', title: 'Box breathing exercise', detail: 'Duration: 4 mins • Anxiety release', bg: 'rgba(123,158,107,0.08)', href: '/app/activities' },
+  { image: '/activities/journaling.webp', title: 'Write placement worries', detail: 'Duration: 10 mins • Grounding therapy', bg: 'rgba(74,44,94,0.10)', href: '/app/journal' },
+  { image: '/activities/anxiety-relief.webp', title: 'Anxiety release audio', detail: 'Duration: 6 mins • Calm guidance', bg: 'rgba(196,93,62,0.10)', href: '/app/activities' },
 ]
 
 function relativeDays(iso: string) {
@@ -153,7 +153,7 @@ export default function DashboardPage() {
           {/* sunset landscape background */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/hero-sunset.png"
+            src="/hero-sunset.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -307,7 +307,7 @@ export default function DashboardPage() {
           {/* cozy room background */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/private-room.png"
+            src="/private-room.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-right"
@@ -336,7 +336,7 @@ export default function DashboardPage() {
           {/* journal book illustration on the right */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/journal-book.png"
+            src="/journal-book.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute bottom-0 right-0 h-[120%] w-auto max-w-[45%] object-contain object-bottom"

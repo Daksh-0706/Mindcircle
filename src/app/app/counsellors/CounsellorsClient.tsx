@@ -13,8 +13,8 @@ const TRUST_BADGES = [
 
 /** Per-counsellor card art. */
 const CARD_ART: Record<string, string> = {
-  'dr-ananya-rao': '/counsellor-card-ananya.png',
-  'rhea-mehta': '/counsellor-card-rhea.png',
+  'dr-ananya-rao': '/counsellor-card-ananya.webp',
+  'rhea-mehta': '/counsellor-card-rhea.webp',
 }
 
 export default function CounsellorsPage() {
@@ -27,7 +27,7 @@ export default function CounsellorsPage() {
           {/* whole scene as background — girl sits naturally on the right */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/counsellors-hero.jpg"
+            src="/counsellors-hero.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-right"
@@ -54,7 +54,7 @@ export default function CounsellorsPage() {
         <section className="relative overflow-hidden rounded-[22px] border border-[#F5D9A8]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/counsellors-preview.png"
+            src="/counsellors-preview.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-right"
@@ -100,7 +100,7 @@ export default function CounsellorsPage() {
         {/* ── Counsellor cards ────────────────────────────────── */}
         <section className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {COUNSELLORS.map((counsellor) => {
-            const art = CARD_ART[counsellor.slug] ?? '/counsellor-card-ananya.png'
+            const art = CARD_ART[counsellor.slug] ?? '/counsellor-card-ananya.webp'
             return (
               <div
                 key={counsellor.slug}

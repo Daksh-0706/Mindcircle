@@ -48,7 +48,7 @@ const pillars = [
     icon: Target,
     title: 'Why',
     text: 'Student mental health deserves tools built with care, not afterthoughts.',
-    art: '/about-why.png',
+    art: '/about-why.webp',
     bg: 'linear-gradient(115deg, #F9F2FC 0%, #F3ECFB 55%, #EEE7F8 100%)',
     iconBg: '#EDE4FA',
   },
@@ -56,7 +56,7 @@ const pillars = [
     icon: Heart,
     title: 'How',
     text: 'Private-first design, anonymous community, zero judgment anywhere.',
-    art: '/about-how.png',
+    art: '/about-how.webp',
     bg: 'linear-gradient(115deg, #FDEEE3 0%, #FCE6E8 55%, #F9DEE6 100%)',
     iconBg: '#FBDBE1',
   },
@@ -64,7 +64,7 @@ const pillars = [
     icon: Sparkles,
     title: 'What next',
     text: 'Verified counsellor onboarding and smarter, gentler insights.',
-    art: '/about-next.png',
+    art: '/about-next.webp',
     bg: 'linear-gradient(115deg, #F4F0FC 0%, #E9E8FC 55%, #E1E0FB 100%)',
     iconBg: '#E4E6FB',
   },
@@ -92,7 +92,7 @@ export default function AboutPage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/about-hero-art.png"
+            src="/about-hero-art.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute right-0 top-0 h-full w-auto"
@@ -114,7 +114,7 @@ export default function AboutPage() {
         <section className="relative overflow-hidden rounded-[24px] bg-white shadow-[0_12px_40px_rgba(74,44,94,0.10)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/about-dk-corner.png"
+            src="/about-dk-corner.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute right-0 top-0 w-[40%]"
@@ -122,7 +122,7 @@ export default function AboutPage() {
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/about-dk-bottom.png"
+            src="/about-dk-bottom.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 w-full"
@@ -154,7 +154,7 @@ export default function AboutPage() {
         <section className="relative px-1 pb-1 pt-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/about-dk-corner.png"
+            src="/about-dk-corner.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute right-0 top-0 w-[34%]"
@@ -202,7 +202,7 @@ export default function AboutPage() {
         <section className="relative overflow-hidden rounded-[24px] bg-[#FDF9F5] p-6 shadow-[0_12px_40px_rgba(74,44,94,0.10)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/about-dk-corner.png"
+            src="/about-dk-corner.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute right-0 top-0 w-[32%]"
@@ -241,7 +241,7 @@ export default function AboutPage() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/about-say-hello.png"
+            src="/about-say-hello.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute right-0 top-0 h-full w-auto"

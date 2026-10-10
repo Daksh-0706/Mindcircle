@@ -13,7 +13,7 @@ const activities = [
     id: 'meditation',
     title: '5-Minute Meditation',
     description: 'A quick guided meditation to center your mind and reduce stress.',
-    image: '/activities/meditation.png',
+    image: '/activities/meditation.webp',
     duration: '5 min',
     level: 'Beginner',
     color: '#4A2C5E',
@@ -22,7 +22,7 @@ const activities = [
     id: 'gratitude',
     title: 'Gratitude Journaling',
     description: 'Reflect on three things you\'re grateful for to shift your perspective.',
-    image: '/activities/journaling.png',
+    image: '/activities/journaling.webp',
     duration: '10 min',
     level: 'Beginner',
     color: '#7B9E6B',
@@ -31,7 +31,7 @@ const activities = [
     id: 'breathing',
     title: 'Breathing Exercise',
     description: 'Practice 4-7-8 breathing technique to calm your nervous system.',
-    image: '/activities/breathing.png',
+    image: '/activities/breathing.webp',
     duration: '3 min',
     level: 'Beginner',
     color: '#C45D3E',
@@ -40,7 +40,7 @@ const activities = [
     id: 'nature',
     title: 'Nature Walk',
     description: 'Mindful walking practice to connect with your surroundings.',
-    image: '/activities/nature-walk.png',
+    image: '/activities/nature-walk.webp',
     duration: '15 min',
     level: 'All levels',
     color: '#5C7A4F',
@@ -49,7 +49,7 @@ const activities = [
     id: 'creative',
     title: 'Creative Expression',
     description: 'Free-form drawing or writing to process emotions creatively.',
-    image: '/activities/creative.png',
+    image: '/activities/creative.webp',
     duration: '20 min',
     level: 'All levels',
     color: '#6B4A80',
@@ -58,7 +58,7 @@ const activities = [
     id: 'detox',
     title: 'Digital Detox',
     description: 'Guided session to unplug and reconnect with yourself.',
-    image: '/activities/detox.png',
+    image: '/activities/detox.webp',
     duration: '30 min',
     level: 'Intermediate',
     color: '#8A8A8A',
@@ -127,7 +127,7 @@ export default function ActivitiesPage() {
               {/* hand holding heart, blended on the right */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/activities/creative.png"
+                src="/activities/creative.webp"
                 alt=""
                 aria-hidden="true"
                 className="pointer-events-none absolute -right-4 top-1/2 hidden h-[150%] w-auto -translate-y-1/2 object-contain mix-blend-multiply md:block"
@@ -184,7 +184,7 @@ export default function ActivitiesPage() {
               {/* garden + clipboard background from the mockup */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/activities-cta-bg.png"
+                src="/activities-cta-bg.webp"
                 alt=""
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"

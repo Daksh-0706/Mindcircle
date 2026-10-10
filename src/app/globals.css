@@ -120,21 +120,38 @@ body {
   font-family: var(--font-display);
 }
 
-/* Grain overlay texture */
+/* Grain overlay texture.
+
+   The base form is a single static layer exactly the size of the viewport.
+   The animated film-grain version — a 200%-size layer sitting above everything
+   at z-index 9999, re-transformed every 0.5s — is opt-in for roomy screens
+   with a mouse. On a phone that animation keeps a 4x-viewport layer resident
+   and forces a full-screen composite twice a second to show a texture at 3%
+   opacity, which is a lot of work for something you cannot see.
+
+   Gated on width as well as pointer type: a phone-sized viewport gets the
+   static version whatever the reported input device, since a narrow screen is
+   the case where the cost actually bites. */
 .grain-overlay::before {
   content: '';
   position: fixed;
-  top: -50%;
-  left: -50%;
-  right: -50%;
-  bottom: -50%;
-  width: 200%;
-  height: 200%;
+  inset: 0;
   background: transparent url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E") repeat;
-  animation: var(--animate-grain);
   pointer-events: none;
   z-index: 9999;
   opacity: 0.4;
+}
+
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  .grain-overlay::before {
+    top: -50%;
+    left: -50%;
+    right: -50%;
+    bottom: -50%;
+    width: 200%;
+    height: 200%;
+    animation: var(--animate-grain);
+  }
 }
 
 /* Glass card */
@@ -144,6 +161,41 @@ body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: var(--shadow-soft);
+}
+
+/* ---------------------------------------------------------------
+   Phone paint budget.
+
+   `backdrop-filter` makes the compositor re-sample everything behind the
+   element, and it cannot be cached while the page scrolls. Against this
+   cream palette the frosted look is barely distinguishable from a slightly
+   more opaque white, but it is paid for on every frame — most expensively on
+   the sticky headers, which are always on screen. So on small screens the
+   blur is dropped and the surfaces are compensated with opacity, keeping the
+   same colour and the same translucency impression at a fraction of the cost.
+
+   These rules sit outside Tailwind's layers on purpose: unlayered CSS beats
+   layered utilities, so the override lands without an `!important` and
+   without touching any markup.
+   --------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .glass-card,
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  .backdrop-blur-md {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  /* The app-shell header is the one translucent bar with no glass-card class;
+     on a phone it paints flat so scrolled content cannot ghost through it. */
+  header.backdrop-blur-md:not(.glass-card) {
+    background-color: var(--color-cream);
+  }
 }
 
 /* Gradient text */
@@ -216,9 +268,21 @@ body {
   scrollbar-width: none;
 }
 
-/* Blob shape */
+/* Blob shape.
+
+   Animating `border-radius` cannot be handed to the compositor, so every
+   frame of this morph is a full repaint of the element. On phones the blobs
+   settle into the shape they start from — visually the same decoration,
+   with no per-frame painting at all. */
 .blob-shape {
   animation: var(--animate-blob);
+}
+
+@media (max-width: 767px) {
+  .blob-shape {
+    animation: none;
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
 }
 
 /* Skeleton shimmer */

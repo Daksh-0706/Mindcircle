@@ -117,7 +117,7 @@ export default function EntryClient({ id }: { id: string }) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/journal-book.png"
+            src="/journal-book.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute -right-8 top-1/2 hidden h-[135%] w-auto -translate-y-1/2 object-contain mix-blend-multiply sm:block"
@@ -147,7 +147,7 @@ export default function EntryClient({ id }: { id: string }) {
         <section className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter bg-white shadow-[0px_4px_16px_#4A2C5E08]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/journal-bg.png"
+            src="/journal-bg.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-60"
@@ -223,7 +223,7 @@ export default function EntryClient({ id }: { id: string }) {
         <section className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter bg-white p-6 shadow-[0px_4px_16px_#4A2C5E08] sm:p-7">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/journal-bg.png"
+            src="/journal-bg.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 h-28 w-full object-cover object-bottom opacity-70"

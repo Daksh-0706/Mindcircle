@@ -187,7 +187,7 @@ export default function CrisisPage() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/crisis-hero.png"
+              src="/crisis-hero.webp"
               alt=""
               className="h-full w-full object-cover object-center"
               style={{ objectPosition: 'center 42%' }}
@@ -245,7 +245,7 @@ export default function CrisisPage() {
                   {/* Decorative leaf bleeding from the right edge */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/deco-leaf-right.png"
+                    src="/deco-leaf-right.webp"
                     alt=""
                     aria-hidden="true"
                     className="pointer-events-none absolute -right-6 top-2 h-full w-auto opacity-60 mix-blend-multiply"

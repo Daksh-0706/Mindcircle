@@ -245,7 +245,7 @@ export default function EditProfilePage() {
         <div className="relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/about-dk-corner.png"
+            src="/about-dk-corner.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute right-0 top-0 w-[34%]"

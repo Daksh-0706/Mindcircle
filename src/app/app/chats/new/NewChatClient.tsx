@@ -125,7 +125,7 @@ export default function NewChatClient() {
         <section className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter px-6 py-7 sm:px-8">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/chats-header.png"
+            src="/chats-header.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover"

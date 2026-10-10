@@ -143,7 +143,7 @@ export default function InsightsPage() {
         <section className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/insights-header.png"
+            src="/insights-header.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -185,7 +185,7 @@ export default function InsightsPage() {
             <div className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter bg-white shadow-[0px_4px_16px_#4A2C5E08]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/insights-chart-bg.png"
+                src="/insights-chart-bg.webp"
                 alt=""
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-70"
@@ -236,7 +236,7 @@ export default function InsightsPage() {
                 {/* soft waves + leaves background */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/insights-dist-bg.png"
+                  src="/insights-dist-bg.webp"
                   alt=""
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -283,7 +283,7 @@ export default function InsightsPage() {
                   {/* Average Mood — purple */}
                   <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#F3EFFB] to-[#EFEAFB] p-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/insights-stat-purple.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
+                    <img src="/insights-stat-purple.webp" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
                     <div className="relative flex items-center gap-3.5">
                       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#E4DBF7] text-xl"><NotoEmoji emoji="🧠" size={24} /></span>
                       <span className="flex-1 text-[15px] font-semibold text-charcoal">Average Mood</span>
@@ -295,7 +295,7 @@ export default function InsightsPage() {
                   {/* Best Day — blue */}
                   <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#EAF1FB] to-[#E7EEFA] p-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/insights-stat-blue.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
+                    <img src="/insights-stat-blue.webp" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
                     <div className="relative flex items-center gap-3.5">
                       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#D9E5F9] text-xl"><NotoEmoji emoji="📅" size={24} /></span>
                       <span className="flex-1 text-[15px] font-semibold text-charcoal">Best Day</span>
@@ -307,7 +307,7 @@ export default function InsightsPage() {
                   {/* Check-in Days — peach */}
                   <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#FBEDE7] to-[#FAE9E4] p-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/insights-stat-peach.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
+                    <img src="/insights-stat-peach.webp" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
                     <div className="relative flex items-center gap-3.5">
                       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F8DCCF] text-xl"><NotoEmoji emoji="🔥" size={24} /></span>
                       <span className="flex-1 text-[15px] font-semibold text-charcoal">Check-in Days</span>
@@ -319,7 +319,7 @@ export default function InsightsPage() {
                   {/* Total Check-ins — green */}
                   <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#E9F5EB] to-[#E6F4E9] p-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/insights-stat-green.png" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
+                    <img src="/insights-stat-green.webp" alt="" aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 h-full w-[38%] object-cover object-right opacity-70" />
                     <div className="relative flex items-center gap-3.5">
                       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#CFEBD6] text-xl"><NotoEmoji emoji="📊" size={24} /></span>
                       <span className="flex-1 text-[15px] font-semibold text-charcoal">Total Check-ins</span>

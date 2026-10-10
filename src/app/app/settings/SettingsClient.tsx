@@ -177,7 +177,7 @@ export default function SettingsPage() {
           {/* leaf illustration top-right */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/settings-leaves.png"
+            src="/settings-leaves.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute -right-4 -top-6 h-56 w-auto object-contain sm:h-64"

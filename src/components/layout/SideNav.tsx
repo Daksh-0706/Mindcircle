@@ -76,7 +76,7 @@ export function SideNav({
       {/* Decorative background image + soft overlay */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/sidebar-bg.png"
+        src="/sidebar-bg.webp"
         alt=""
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 h-full w-full object-cover"

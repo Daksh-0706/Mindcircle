@@ -18,7 +18,7 @@ type LogoProps = {
 /**
  * The MindCircle brand mark: two reaching hands inside a gradient ring.
  *
- * Sourced from `public/logo.png`, which is the design's artwork with its flat
+ * Sourced from `public/logo.webp`, which is the design's artwork with its flat
  * backdrop keyed out (see `scripts/process-logo.py`). Sized by height so every
  * call site renders the same artwork at the same proportions.
  */
@@ -32,11 +32,11 @@ export function Logo({
     <span className={cn('inline-flex items-center gap-2', className)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/logo.png"
+        src="/logo.webp"
         alt="MindCircle"
         height={height}
-        // Matches the asset's intrinsic 1024x568.
-        width={Math.round(height * (1024 / 568))}
+        // Matches the asset's intrinsic 512x284.
+        width={Math.round(height * (512 / 284))}
         className="w-auto shrink-0 select-none"
         style={{ height }}
       />

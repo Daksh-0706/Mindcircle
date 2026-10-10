@@ -36,30 +36,40 @@ export default function NotFound() {
             radial-gradient(circle at 10% 12%, rgba(252, 236, 228, 0.60) 0%, rgba(252, 236, 228, 0) 38%)
           `,
         }}
-      />
+      />        {/* Decorative corners lifted from the template.
 
-      {/* Decorative corners lifted from the template */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/notfound-cloud-left.png"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-0 hidden w-[34%] max-w-[620px] md:block"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/notfound-right.png"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-[17vh] hidden w-[150px] xl:block xl:w-[217px]"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/notfound-leaves.png"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 right-0 hidden w-[130px] md:block lg:w-[175px]"
-      />
+            `loading="lazy"` is load-bearing here: this boundary is part of the
+            root tree, so without it every page in the app — including the ones
+            a signed-in phone user actually visits — emits a preload for these
+            four files before anything it really needs. Lazy just means the
+            404's own decoration arrives with the 404. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/notfound-cloud-left.webp"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          className="pointer-events-none absolute bottom-0 left-0 hidden w-[34%] max-w-[620px] md:block"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/notfound-right.webp"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          className="pointer-events-none absolute right-0 top-[17vh] hidden w-[150px] xl:block xl:w-[217px]"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/notfound-leaves.webp"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+          className="pointer-events-none absolute bottom-0 right-0 hidden w-[130px] md:block lg:w-[175px]"
+        />
 
       {/* ── Nav shell ─────────────────────────────────── */}
       <header className="relative mx-auto max-w-[1520px] px-4 pt-5 sm:px-8">
@@ -128,9 +138,11 @@ export default function NotFound() {
         <div className="text-center lg:text-left">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/notfound-404.png"
+            src="/notfound-404.webp"
             alt=""
             aria-hidden="true"
+            loading="lazy"
+            decoding="async"
             className="mx-auto w-[300px] max-w-full sm:w-[400px] lg:mx-0 lg:w-full lg:max-w-[560px]"
           />
           <h1 className="font-heading text-[32px] font-bold leading-tight text-[#3D2659] sm:text-[44px]">

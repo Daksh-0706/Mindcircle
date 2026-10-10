@@ -36,12 +36,12 @@ const SAFETY_RULES = [
 
 /** Per-conversation themed card art, assigned round-robin by index. */
 const CHAT_ART = [
-  { art: '/chat-card-heart.png', tint: 'bg-[#FBE7EC]' },
-  { art: '/chat-card-night.png', tint: 'bg-[#EFEAFB]' },
-  { art: '/chat-card-morning.png', tint: 'bg-[#FBEEDC]' },
-  { art: '/chat-card-green.png', tint: 'bg-[#EAF3EA]' },
-  { art: '/chat-card-study.png', tint: 'bg-[#EFEAFB]' },
-  { art: '/chat-card-default.png', tint: 'bg-[#FDF4EC]' },
+  { art: '/chat-card-heart.webp', tint: 'bg-[#FBE7EC]' },
+  { art: '/chat-card-night.webp', tint: 'bg-[#EFEAFB]' },
+  { art: '/chat-card-morning.webp', tint: 'bg-[#FBEEDC]' },
+  { art: '/chat-card-green.webp', tint: 'bg-[#EAF3EA]' },
+  { art: '/chat-card-study.webp', tint: 'bg-[#EFEAFB]' },
+  { art: '/chat-card-default.webp', tint: 'bg-[#FDF4EC]' },
 ] as const
 
 /** Fades card art into the tint so there is no hard vertical seam. */
@@ -100,7 +100,7 @@ export default function ChatsPage() {
             {/* lavender clouds + leaves bg */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/chats-header.png"
+              src="/chats-header.webp"
               alt=""
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -220,7 +220,7 @@ export default function ChatsPage() {
           <div className="relative overflow-hidden rounded-[22px] border border-sage/25">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/deco-leaf-right.png"
+              src="/deco-leaf-right.webp"
               alt=""
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full object-cover object-top opacity-60"

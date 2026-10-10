@@ -30,10 +30,10 @@ const CIRCLE_TABS = ['All rooms active', 'Stories', 'People'] as const
 
 /** Per-room themed card art, assigned round-robin by index. */
 const ROOM_ART = [
-  { art: '/connect-card-purple.png', tint: 'bg-[#EFEAFB]' },
-  { art: '/connect-card-pink.png', tint: 'bg-[#FBE7EC]' },
-  { art: '/connect-card-blue.png', tint: 'bg-[#EAF2FB]' },
-  { art: '/connect-card-green.png', tint: 'bg-[#EAF3EA]' },
+  { art: '/connect-card-purple.webp', tint: 'bg-[#EFEAFB]' },
+  { art: '/connect-card-pink.webp', tint: 'bg-[#FBE7EC]' },
+  { art: '/connect-card-blue.webp', tint: 'bg-[#EAF2FB]' },
+  { art: '/connect-card-green.webp', tint: 'bg-[#EAF3EA]' },
 ] as const
 
 /** Fades card art into the tint so there is no hard vertical seam. */
@@ -362,7 +362,7 @@ export default function ConnectPage() {
           {/* people illustration on the right, blended */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/connect-hero.png"
+            src="/connect-hero.webp"
             alt=""
             aria-hidden="true"
             className="pointer-events-none absolute -right-4 top-1/2 hidden h-[130%] w-auto -translate-y-1/2 object-contain mix-blend-multiply sm:block"

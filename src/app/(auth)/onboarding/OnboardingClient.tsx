@@ -32,14 +32,14 @@ const STEPS: StepConfig[] = [
     heading: () => "Let's set up your profile",
     intro:
       'A few details to help you connect with the right people and make your experience more meaningful.',
-    bg: '/onboarding/bg-plain.png',
+    bg: '/onboarding/bg-plain.webp',
   },
   {
     label: 'Interests',
     sub: 'What are you into?',
     heading: () => 'What are you into?',
     intro: 'Pick a few interests so we can show you people and rooms that actually match your vibe.',
-    bg: '/onboarding/bg-plain.png',
+    bg: '/onboarding/bg-plain.webp',
   },
   {
     label: 'Your Goals',
@@ -47,14 +47,14 @@ const STEPS: StepConfig[] = [
     heading: () => 'What do you want from Mindcircle?',
     intro:
       'Choose a few goals so we can personalize your experience and show you people with similar journeys.',
-    bg: '/onboarding/bg-plain.png',
+    bg: '/onboarding/bg-plain.webp',
   },
   {
     label: "You're all set!",
     sub: "Let's begin your journey",
     heading: (draft) => (draft.name ? `You're all set, ${draft.name}! 🎉` : "You're all set! 🎉"),
     intro: "Your profile is ready. Here's a quick summary. You can always edit this later.",
-    bg: '/onboarding/bg-plain.png',
+    bg: '/onboarding/bg-plain.webp',
   },
 ]
 
