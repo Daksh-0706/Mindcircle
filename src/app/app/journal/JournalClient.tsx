@@ -303,7 +303,6 @@ export default function JournalPage() {
           ) : (
             <div className="space-y-3">
               {filteredEntries.slice(0, 10).map((entry) => {
-                const words = entry.content.trim().split(/\s+/).filter(Boolean).length
                 return (
                   <Link
                     key={entry.id}
@@ -326,7 +325,7 @@ export default function JournalPage() {
                           )}
                         </span>
                       )}
-                      <span className="text-xs text-[#80698A]">{words} words</span>
+                      <ChevronRight size={16} className="shrink-0 text-charcoal/50" />
                     </div>
                   </Link>
                 )
