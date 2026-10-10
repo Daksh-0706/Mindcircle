@@ -272,7 +272,13 @@ function Shell({
   // ── Compact layout: mobile & tablet ───────────────────────────────
   if (compact) {
     return (
-      <div className="min-h-screen bg-cream flex flex-col">
+      // `min-h-dvh`, not `min-h-screen`: on a phone `100vh` is the *large*
+      // viewport (URL bar collapsed) while pages sized in `dvh` — the chat
+      // thread pins itself to `100dvh` — are the *dynamic* height. The
+      // difference left a strip of scrollable page under every short screen,
+      // which was just enough room for the chat's auto-scroll-to-newest to
+      // drag the document down and push its own header off the top.
+      <div className="min-h-[100dvh] bg-cream flex flex-col">
         {nav.showMobileHeader && (
           <MobileHeader
             title={title}
@@ -344,8 +350,9 @@ function Shell({
   }
 
   // ── Tablet caught by neither (safety): treat like compact ─────────
+  // Same dvh reasoning as the compact shell above.
   return (
-    <div className="min-h-screen bg-cream flex flex-col">
+    <div className="min-h-[100dvh] bg-cream flex flex-col">
       {nav.showMobileHeader && (
         <MobileHeader title={title} showBack={nav.showBack} onMenu={() => setSidebarOpen(true)} onBack={nav.showBack ? nav.onBack : undefined} />
       )}

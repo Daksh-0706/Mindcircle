@@ -150,7 +150,10 @@ export default function ChatDetailPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  /** The scroller itself — auto-scroll must target this, never the page. */
+  const listRef = useRef<HTMLDivElement>(null)
+  /** False until the thread has actually shown something worth scrolling to. */
+  const seenContent = useRef(false)
 
   // Live camera preview while the capture sheet is open. Re-runs when the user
   // flips between the front and rear camera, tearing the old stream down first.
@@ -375,8 +378,27 @@ export default function ChatDetailPage() {
     }
   }, [peerId, isRoom === true])
 
+  /**
+   * Keep the newest message in view.
+   *
+   * Scrolls the *message list* rather than calling `scrollIntoView`, which
+   * walks every scrollable ancestor including the document: on first load the
+   * shell is briefly taller than the viewport (the mobile header and bottom
+   * nav are still mounted on the first paint), so the align-to-start scroll
+   * drove the whole page to the bottom and hid this thread's own header behind
+   * it — the page then had to be dragged back down. A page that can't be
+   * scrolled can't lose its header.
+   *
+   * The first paint jumps straight to the newest message; arrivals after that
+   * glide, so an incoming message never yanks the view away from someone
+   * reading further up.
+   */
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = listRef.current
+    if (!el) return
+    const hadContent = seenContent.current
+    seenContent.current = seenContent.current || messages.length > 0
+    el.scrollTo({ top: el.scrollHeight, behavior: hadContent ? 'smooth' : 'auto' })
   }, [messages.length])
 
   /**
@@ -558,68 +580,80 @@ export default function ChatDetailPage() {
 
       <div className="flex min-h-0 flex-1 flex-col">
         {/* Messages */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-1">
-          {loading ? (
-            <div className="space-y-4">
-              <Skeleton variant="rect" width="55%" height={48} />
-              <Skeleton variant="rect" width="55%" height={48} className="ml-auto" />
-              <Skeleton variant="rect" width="60%" height={48} />
-            </div>
-          ) : messages.length === 0 ? (
-            <p className="py-12 text-center text-sm text-warm-gray">
-              No messages yet. Write something kind to start the conversation.
-            </p>
-          ) : (
-            messages.map((m) => {
-              const mine = myId !== null && m.sender_id === myId
-              const urls = imageUrlsOf(m)
-              return (
-                <div
-                  key={m.id}
-                  className={`group flex items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}
-                >
+        <div
+          ref={listRef}
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-1 py-1"
+        >
+          {/*
+            Pins a short thread down to the composer instead of leaving the
+            last bubble floating at the top with a void underneath it.
+            `margin-top:auto` collapses to 0 the moment the content is taller
+            than the scroller — unlike `justify-content:flex-end`, which would
+            strand everything above the fold — so a long conversation still
+            scrolls normally from the top.
+          */}
+          <div className="mt-auto">
+            {loading ? (
+              <div className="space-y-4">
+                <Skeleton variant="rect" width="55%" height={48} />
+                <Skeleton variant="rect" width="55%" height={48} className="ml-auto" />
+                <Skeleton variant="rect" width="60%" height={48} />
+              </div>
+            ) : messages.length === 0 ? (
+              <p className="py-12 text-center text-sm text-warm-gray">
+                No messages yet. Write something kind to start the conversation.
+              </p>
+            ) : (
+              messages.map((m) => {
+                const mine = myId !== null && m.sender_id === myId
+                const urls = imageUrlsOf(m)
+                return (
                   <div
-                    className={
-                      mine
-                        ? 'max-w-[70%] rounded-[18px] rounded-br-md bg-plum px-3.5 py-2.5 text-[14px] leading-6 text-cream shadow-[0_2px_8px_rgba(74,44,94,0.14)]'
-                        : 'max-w-[70%] rounded-[18px] rounded-bl-md border border-warm-gray-lighter/60 bg-white px-3.5 py-2.5 text-[14px] leading-6 text-charcoal shadow-[0_2px_8px_rgba(74,44,94,0.06)]'
-                    }
+                    key={m.id}
+                    className={`group flex items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}
                   >
-                    {urls.length > 0 && (
-                      <ImageGrid
-                        urls={urls}
-                        onOpen={(index) => setLightbox({ urls, index })}
-                      />
-                    )}
-                    {m.content && (
-                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                    )}
-                    <p
+                    <div
                       className={
                         mine
-                          ? 'mt-0.5 text-right text-[9px] text-cream/60'
-                          : 'mt-0.5 text-right text-[9px] text-warm-gray'
+                          ? 'max-w-[70%] rounded-[18px] rounded-br-md bg-plum px-3.5 py-2.5 text-[14px] leading-6 text-cream shadow-[0_2px_8px_rgba(74,44,94,0.14)]'
+                          : 'max-w-[70%] rounded-[18px] rounded-bl-md border border-warm-gray-lighter/60 bg-white px-3.5 py-2.5 text-[14px] leading-6 text-charcoal shadow-[0_2px_8px_rgba(74,44,94,0.06)]'
                       }
                     >
-                      {timeLabel(m.created_at)}
-                    </p>
+                      {urls.length > 0 && (
+                        <ImageGrid
+                          urls={urls}
+                          onOpen={(index) => setLightbox({ urls, index })}
+                        />
+                      )}
+                      {m.content && (
+                        <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                      )}
+                      <p
+                        className={
+                          mine
+                            ? 'mt-0.5 text-right text-[9px] text-cream/60'
+                            : 'mt-0.5 text-right text-[9px] text-warm-gray'
+                        }
+                      >
+                        {timeLabel(m.created_at)}
+                      </p>
+                    </div>
+                    {/* Only ever on the caller's own messages: the server refuses
+                        a delete for anybody else's, so offering it would be a
+                        dead end. Hidden on desktop until the row is hovered, so a
+                        thread does not turn into a wall of dots; always visible on
+                        touch, where there is no hover to reveal it. */}
+                    {mine && !m.id.startsWith('temp-') && (
+                      <MessageMenu
+                        onShowDetails={() => setMenuMessage(m)}
+                        onDelete={() => setMenuMessage(m)}
+                      />
+                    )}
                   </div>
-                  {/* Only ever on the caller's own messages: the server refuses
-                      a delete for anybody else's, so offering it would be a
-                      dead end. Hidden on desktop until the row is hovered, so a
-                      thread does not turn into a wall of dots; always visible on
-                      touch, where there is no hover to reveal it. */}
-                  {mine && !m.id.startsWith('temp-') && (
-                    <MessageMenu
-                      onShowDetails={() => setMenuMessage(m)}
-                      onDelete={() => setMenuMessage(m)}
-                    />
-                  )}
-                </div>
-              )
-            })
-          )}
-          <div ref={bottomRef} className="mt-auto" />
+                )
+              })
+            )}
+          </div>
         </div>
 
         {error && (
