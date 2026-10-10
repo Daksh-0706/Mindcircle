@@ -1,21 +1,32 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 
+/**
+ * Subscribe to a CSS media query.
+ *
+ * `useSyncExternalStore` is the right primitive here: matchMedia is an external
+ * store that notifies on change, and reading it during render keeps the first
+ * client paint correct without the extra render pass (and cascading-render lint
+ * error) that setting state from an effect would cause. The server snapshot is
+ * always false, which is also what the initial client snapshot would be during
+ * hydration, so there is no hydration mismatch.
+ */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false)
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      const media = window.matchMedia(query)
+      media.addEventListener('change', onStoreChange)
+      return () => media.removeEventListener('change', onStoreChange)
+    },
+    [query],
+  )
 
-  useEffect(() => {
-    const media = window.matchMedia(query)
-    if (media.matches !== matches) {
-      setMatches(media.matches)
-    }
-    const listener = () => setMatches(media.matches)
-    media.addEventListener('change', listener)
-    return () => media.removeEventListener('change', listener)
-  }, [query, matches])
+  const getSnapshot = useCallback(() => window.matchMedia(query).matches, [query])
 
-  return matches
+  const getServerSnapshot = useCallback(() => false, [])
+
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
 
 export function useIsMobile() {

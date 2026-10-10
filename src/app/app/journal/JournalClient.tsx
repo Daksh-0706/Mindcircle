@@ -4,6 +4,7 @@ import { AppNav } from '../../../components/layout/AppNavContext'
 import Skeleton from '../../../components/ui/Skeleton'
 import EmptyState from '../../../components/ui/EmptyState'
 import { Lock, Plus, Search, Send, ChevronRight, Leaf, Heart, Sun, Star, Sparkle, Flower2 } from 'lucide-react'
+import Link from 'next/link'
 import MoodPicker from '../../../components/ui/MoodPicker'
 import { MOOD_EMOJIS } from '../../../lib/constants'
 import { formatShortDate, formatTime } from '../../../lib/dates'
@@ -304,7 +305,11 @@ export default function JournalPage() {
               {filteredEntries.slice(0, 10).map((entry) => {
                 const words = entry.content.trim().split(/\s+/).filter(Boolean).length
                 return (
-                  <div key={entry.id} className="flex items-center gap-6 rounded-2xl border border-warm-gray-lighter bg-white p-5">
+                  <Link
+                    key={entry.id}
+                    href={`/app/journal/${entry.id}`}
+                    className="flex items-center gap-6 rounded-2xl border border-warm-gray-lighter bg-white p-5 transition-colors hover:bg-[#FBF7F2]"
+                  >
                     <span className="w-16 shrink-0 text-[13px] font-bold text-[#80698A]">{dayLabel(entry.created_at)}</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-base font-bold text-plum">{titleOf(entry.content)}</p>
@@ -323,7 +328,7 @@ export default function JournalPage() {
                       )}
                       <span className="text-xs text-[#80698A]">{words} words</span>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>

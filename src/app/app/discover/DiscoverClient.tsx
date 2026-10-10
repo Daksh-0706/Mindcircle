@@ -23,11 +23,19 @@ type Person = {
   bio: string
   interests: string[]
   goals: string[]
-  connection: ConnectionState
+  direction: 'none' | 'pending' | 'accepted' | 'outgoing' | 'incoming'
   is_public: boolean
 }
 
 const PAGE = 8
+
+function directionOf(p: Record<string, unknown>): Person['direction'] {
+  // API historically returned `connection`; newer code returns `direction`.
+  // Keep both reading correctly so older caches do not render the wrong button.
+  const byConnection = p.connection as Person['direction'] | undefined
+  if (byConnection && byConnection !== 'none') return byConnection
+  return (p.direction as Person['direction']) ?? 'none'
+}
 
 export default function DiscoverClient() {
   const router = useRouter()
@@ -62,6 +70,17 @@ export default function DiscoverClient() {
     void load()
   }, [load])
 
+  useEffect(() => {
+    const handler = () => {
+      void load(query)
+    }
+    window.addEventListener('connections-changed', handler)
+    return () => window.removeEventListener('connections-changed', handler)
+  }, [load, query])
+
+
+
+
   // Debounced search: the server does the matching, so we never filter a
   // page-sized list on the client and miss matches beyond it.
   useEffect(() => {
@@ -81,6 +100,7 @@ export default function DiscoverClient() {
    * Afterwards we re-read the list instead of guessing the new state here.
    */
   const connect = async (id: string) => {
+    console.log('[Discover] connect called for:', id)
     setBusy(id)
     try {
       const res = await fetch('/api/connections', {
@@ -88,12 +108,15 @@ export default function DiscoverClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: id }),
       })
+      const text = await res.text()
+      console.log('[Discover] POST /api/connections response:', res.status, text.slice(0, 500))
       if (!res.ok) {
         const json = await res.json().catch(() => null)
         throw new Error(json?.error || 'Could not send the request.')
       }
       await load(query)
     } catch (e) {
+      console.error('[Discover] connect error:', e)
       setError(e instanceof Error ? e.message : 'Could not send the request.')
     } finally {
       setBusy(null)
@@ -126,6 +149,26 @@ export default function DiscoverClient() {
     }
   }
 
+  const acceptRequest = async (id: string) => {
+    setBusy(id)
+    try {
+      const res = await fetch('/api/connections', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: id }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        throw new Error(json?.error || 'Could not accept the request.')
+      }
+      await load(query)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not accept the request.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <>
       <AppNav title="Discover People" />
@@ -145,8 +188,7 @@ export default function DiscoverClient() {
               <p className="mt-2 max-w-xl text-[14px] leading-6 text-charcoal/70">
                 Meet and connect with people who share similar experiences and vibes.
               </p>
-            </div>
-            <p className="hidden shrink-0 text-right text-[12px] leading-5 text-plum/60 sm:block">
+            </div>              <p className="hidden shrink-0 text-right text-[12px] leading-5 text-plum/60 sm:block">
               Different stories.
               <br />
               Same journey. <NotoEmoji emoji="💜" size={13} />
@@ -225,9 +267,10 @@ export default function DiscoverClient() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {people.slice(0, visible).map((person, index) => {
-              const accepted = person.connection === 'accepted'
-              const sent = person.connection === 'outgoing' || person.connection === 'pending'
-              const incoming = person.connection === 'incoming'
+              const dir = directionOf(person)
+              const accepted = dir === 'accepted'
+              const sent = dir === 'outgoing' || dir === 'pending'
+              const incoming = dir === 'incoming'
               // Everyone in the directory opens. A private profile opens in a locked form
 // (alias + avatar + "send a request"), which is the whole point of Discover —
 // it shows who is here before you decide who to connect to.
@@ -328,10 +371,10 @@ const viewable = true
                         <>
                           <Check size={15} aria-hidden="true" /> Accept
                         </>
-                      ) : sent ? (
+                      )                      : sent ? (
                         <>
                           {/* Tapping again withdraws the request. */}
-                          <X size={15} aria-hidden="true" /> Cancel request
+                          <X size={15} aria-hidden="true" /> Pending
                         </>
                       ) : (
                         <>

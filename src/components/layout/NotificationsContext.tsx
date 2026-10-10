@@ -87,9 +87,20 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const loadedRef = useRef(false)
 
   // Hydrate from localStorage on mount (client-only).
+  //
+  // The read is deferred to a microtask so the effect itself never triggers a
+  // synchronous cascading render — React has already committed the empty list
+  // by then, which is what keeps the server and first client render identical.
   useEffect(() => {
-    setNotifications(load())
-    loadedRef.current = true
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      setNotifications(load())
+      loadedRef.current = true
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Persist whenever the list changes.

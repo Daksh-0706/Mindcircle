@@ -483,26 +483,26 @@ export default function ChatDetailPage() {
       {/* Full-screen thread: suppress the app's mobile header and bottom nav
           so the conversation owns the whole viewport. */}
       <AppNav showBack showMobileHeader={false} showBottomNav={false} />
-      <div className="flex h-[calc(100dvh-4.5rem)] flex-col lg:h-[calc(100dvh-3rem)]">
+      <div className="flex h-full flex-col">
       {/* Chat header — back arrow, ring avatar, name. Nothing else: no call,
           video, sticker or attach affordances on this surface. */}
-      <div className="mb-4 flex items-center gap-3.5">
+      <div className="mb-3 flex items-center gap-3">
         <button
           type="button"
           onClick={() => router.push(backHref)}
           aria-label={isRoom ? 'Back to circles' : 'Back to chats'}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-charcoal/80 transition-colors hover:bg-plum/5 hover:text-plum"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-charcoal/80 transition-colors hover:bg-plum/5 hover:text-plum"
         >
-          <ChevronLeft size={24} />
+          <ChevronLeft size={22} />
         </button>
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-plum/10 ring-2 ring-plum">
-          <NotoEmoji emoji={isRoom ? roomEmoji(roomName) : peerAvatar} size={22} />
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-plum/10 ring-2 ring-plum">
+          <NotoEmoji emoji={isRoom ? roomEmoji(roomName) : peerAvatar} size={20} />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-heading text-[19px] font-extrabold leading-tight text-charcoal">
+          <h1 className="truncate font-heading text-[17px] font-extrabold leading-tight text-charcoal">
             {roomName}
           </h1>
-          <p className="truncate text-[13px] text-warm-gray">
+          <p className="truncate text-[12px] text-warm-gray">
             {isRoom
               ? `Anonymous room${memberCount !== null ? ` · ${memberCount} here` : ''}`
               : 'Mindcircle user'}
@@ -510,9 +510,9 @@ export default function ChatDetailPage() {
         </div>
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* Messages */}
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-1 py-1.5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-1">
           {loading ? (
             <div className="space-y-4">
               <Skeleton variant="rect" width="55%" height={48} />
@@ -535,8 +535,8 @@ export default function ChatDetailPage() {
                   <div
                     className={
                       mine
-                        ? 'max-w-[55%] rounded-[16px] rounded-br-md bg-plum px-3 py-2 text-[13px] leading-5 text-cream shadow-[0_2px_6px_rgba(74,44,94,0.12)]'
-                        : 'max-w-[55%] rounded-[16px] rounded-bl-md border border-warm-gray-lighter/60 bg-white px-3 py-2 text-[13px] leading-5 text-charcoal shadow-[0_2px_6px_rgba(74,44,94,0.05)]'
+                        ? 'max-w-[70%] rounded-[18px] rounded-br-md bg-plum px-3.5 py-2.5 text-[14px] leading-6 text-cream shadow-[0_2px_8px_rgba(74,44,94,0.14)]'
+                        : 'max-w-[70%] rounded-[18px] rounded-bl-md border border-warm-gray-lighter/60 bg-white px-3.5 py-2.5 text-[14px] leading-6 text-charcoal shadow-[0_2px_8px_rgba(74,44,94,0.06)]'
                     }
                   >
                     {urls.length > 0 && (
@@ -573,7 +573,7 @@ export default function ChatDetailPage() {
               )
             })
           )}
-          <div ref={bottomRef} />
+          <div ref={bottomRef} className="mt-auto" />
         </div>
 
         {error && (
@@ -626,7 +626,7 @@ export default function ChatDetailPage() {
         )}
 
         {/* Composer — a single pill bar pinned to the bottom. */}
-        <div className="mt-3 flex items-center gap-2 rounded-full border border-plum/10 bg-[#EDEBFB] p-1.5 pl-2">
+        <div className="shrink-0 mt-2 flex items-center gap-2 rounded-full border border-plum/10 bg-[#EDEBFB] p-1.5 pl-2">
           <button
             type="button"
             onClick={() => {

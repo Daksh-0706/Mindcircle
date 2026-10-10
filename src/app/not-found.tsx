@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Compass, Heart, Home } from 'lucide-react'
+import { Heart, Home, Compass } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Page not found',
@@ -21,10 +21,6 @@ function Dashes({ className = '' }: { className?: string }) {
   )
 }
 
-/**
- * Custom 404 — cream page with the mockup layout: nav pill, dancing mascot
- * animation on the left, 404 art + copy + actions on the right.
- */
 export default function NotFound() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#FDF5F1]">
@@ -65,7 +61,7 @@ export default function NotFound() {
         className="pointer-events-none absolute bottom-0 right-0 hidden w-[130px] md:block lg:w-[175px]"
       />
 
-      {/* ── Nav pill ─────────────────────────────────── */}
+      {/* ── Nav shell ─────────────────────────────────── */}
       <header className="relative mx-auto max-w-[1520px] px-4 pt-5 sm:px-8">
         <nav className="flex items-center justify-between rounded-full bg-white/90 px-5 py-3 shadow-[0_6px_24px_rgba(74,44,94,0.07)] sm:px-7">
           <span className="flex items-start gap-1">

@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   const { data: links, error } = await supabase
     .from('connections')
-    .select('user_a, user_b, status, created_at, accepted_at')
+    .select('id, user_a, user_b, status, created_at, accepted_at')
     .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
 
   if (error) {
@@ -59,6 +59,7 @@ export async function GET(request: Request) {
       const iAmRecipient = l.user_b === user.id
       return {
         id: peerId,
+        connection_id: l.id,
         status: l.status,
         direction: l.status === 'accepted' ? 'accepted' : iAmRecipient ? 'incoming' : 'outgoing',
         created_at: l.created_at,
@@ -168,20 +169,20 @@ export async function PATCH(request: Request) {
   }
 
   const body = await readJson(request)
-  const targetId = asUuid(body?.user_id)
-  if (!targetId) return badRequest('Invalid user_id.')
+  const connectionId = asUuid(body?.connection_id)
+  if (!connectionId) return badRequest('Invalid connection_id.')
 
   const { data: updated, error } = await supabase
     .from('connections')
     .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-    .eq('user_a', user.id)
-    .eq('user_b', targetId)
+    .eq('id', connectionId)
+    .eq('user_b', user.id)
     .eq('status', 'pending')
     .select('id, user_a, user_b, status')
     .maybeSingle()
 
   if (error) return serverError('connections accept', error)
-  if (!updated) return badRequest('No pending request from that person.')
+  if (!updated) return badRequest('No pending request to accept.')
 
   return NextResponse.json({ data: updated })
 }
@@ -201,16 +202,15 @@ export async function DELETE(request: Request) {
   }
 
   const body = await readJson(request)
-  const targetId = asUuid(body?.user_id)
-  if (!targetId) return badRequest('Invalid user_id.')
-
-  const { user_a, user_b } = pair(user.id, targetId)
+  const connectionId = asUuid(body?.connection_id)
+  if (!connectionId) return badRequest('Invalid connection_id.')
 
   const { error } = await supabase
     .from('connections')
     .delete()
-    .eq('user_a', user_a)
-    .eq('user_b', user_b)
+    .eq('id', connectionId)
+    .eq('user_a', user.id)
+    .eq('status', 'pending')
 
   if (error) return serverError('connections delete', error)
   return NextResponse.json({ ok: true })
