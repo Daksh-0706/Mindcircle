@@ -1,6 +1,6 @@
 # 🧠 MindCircle
 
-A safe, anonymous mental-wellness companion for students and young professionals. Journal your thoughts, track your mood, connect with peers in moderated rooms, and find professional help — all in one warm, private space.
+A safe, anonymous mental-wellness companion for students and young professionals. Journal your thoughts, track your mood, connect with peers in community rooms, and find professional help — all in one warm, private space.
 
 > **Built with privacy at the core:** every personal entry is owner-only at the database level, and community features default to anonymous aliases like `quiet-sparrow-42`.
 
@@ -12,15 +12,17 @@ A safe, anonymous mental-wellness companion for students and young professionals
 |---|---|
 | 📓 **Private Journaling** | Write entries with optional mood tags. Owner-only access enforced by Row Level Security. |
 | 📈 **Mood Tracking** | Emoji-based daily check-ins with insights: averages, distribution, best day, streaks, and trend takeaways. |
-| 👥 **Peer Support** | Anonymous chat rooms with live messaging, plus one-to-one DMs with read receipts. Photos can be sent from the camera or the gallery. |
+| 👥 **Peer Support** | Anonymous chat rooms with live messaging, plus one-to-one DMs with read receipts. Send up to 9 photos per message from the camera or the gallery, and delete your own messages — the row survives as a placeholder, the content is scrubbed. |
 | 🌸 **Community Stories** | Share anonymous 24-hour stories and react with likes. |
 | 🎯 **Guided Activities** | Breathing exercises, grounding techniques, and mindfulness practices. |
-| 🩺 **Counsellor Directory** | Browse verified counsellor profiles. |
+| 🩺 **Counsellor Directory** | Browse counsellor profiles — credentials, specialisations, availability and what a first session looks like. Booking is not live yet; the UI says so rather than pretending. |
 | ❤️ **Crisis Support** | One-tap access to 24/7 Indian helplines (iCall, Vandrevala, AASRA) plus an interactive breathing exercise. |
 | 👤 **Community Alias** | A unique, randomly generated handle (`silver-otter`) that is your primary identity everywhere — display names can repeat, aliases cannot. Changeable any time, as long as it stays unique. |
 | 🔍 **Discover** | Searchable directory of real members, filterable by interest. Connect, cancel a request, or message people you are already connected with. |
 | 🛡️ **Safety Tools** | Block someone (they leave your Discover, chats and search entirely) and report them with a reason. Accounts are removed automatically at 20 reports. |
-| 🗂️ **4-Step Profile Setup** | One guided flow for name, location, bio, avatar, interests, goals and profile visibility — reachable again any time from Settings. |
+| 🗂️ **4-Step Profile Setup** | One guided flow for name, pronouns, location, bio, avatar, visibility, interests and goals — reachable again any time from Settings. |
+| 🔔 **In-App Notifications** | A bell in the top bar: connection requests, gentle reminders, and new resources. Stored in your browser (`localStorage`), never on a server. |
+| 🙋 **Help Centre** | Public About, 17-question FAQ and contact-support pages under `/app/help/*`, linked from Settings, the side nav and the legal pages. |
 
 ## 🛠 Tech Stack
 
@@ -30,13 +32,13 @@ A safe, anonymous mental-wellness companion for students and young professionals
 | UI | [React 19](https://react.dev), [TypeScript 5](https://www.typescriptlang.org) |
 | Styling | [Tailwind CSS v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) (base-nova) + [framer-motion](https://www.framer.com/motion/) |
 | Icons | [lucide-react](https://lucide.dev) |
-| Database & Auth | [Supabase](https://supabase.com) — PostgreSQL, Auth (email + OTP + Google OAuth), Realtime, Storage |
-| State | React hooks + Route Handlers (no global store needed) |
+| Database & Auth | [Supabase](https://supabase.com) — PostgreSQL, Auth (Google OAuth; email + OTP is built but dormant until SMTP is configured), Realtime, Storage |
+| State | React hooks + Route Handlers (no global store needed — `zustand` is installed but unused) |
 
 ## 🔌 API Reference
 
 Every route lives in `src/app/api/**/route.ts` and is a Next.js Route Handler.
-**All 19 require a signed-in session** — each one re-verifies `auth.getUser()`
+**All 21 routes require a signed-in session** — each one re-verifies `auth.getUser()`
 server-side and answers `401` without one. There is no public, unauthenticated
 API surface.
 
@@ -50,7 +52,8 @@ API surface.
 | `GET` | `/api/profile/[id]` | One profile. Redacted to alias + avatar when private and not connected |
 | `GET` | `/api/profile/[id]/mood?range=` | Mood trends for a connection who opted in. Aggregates only |
 | `GET` `POST` | `/api/mood` | Own mood check-ins — list and create |
-| `GET` `POST` `DELETE` | `/api/journal` | Own journal entries — list, create, delete |
+| `GET` `POST` `DELETE` | `/api/journal` | Own journal entries — list, create, delete one (`?id=`) |
+| `GET` | `/api/journal/[id]` | One journal entry. Someone else's id is a `404` on purpose, so ids cannot be probed |
 | `GET` | `/api/connections` | Connections and pending requests, both directions |
 | `POST` | `/api/connections` | Send a request (auto-accepts if they asked first) |
 | `PATCH` | `/api/connections` | Accept an incoming request |
@@ -58,19 +61,22 @@ API surface.
 | `GET` `POST` `DELETE` | `/api/blocks` | List, block, unblock. Blocking also drops the connection |
 | `GET` `POST` | `/api/reports` | List own reports, report a member (once per person) |
 | `GET` `POST` `DELETE` | `/api/chat` | Rooms and membership — list, join, leave |
-| `GET` `POST` | `/api/chat/messages?room_id=` | Room messages — history and send (text or image) |
-| `GET` `POST` | `/api/chat/dm` | Direct-message threads — list and open/send |
+| `GET` `POST` `DELETE` | `/api/chat/messages?room_id=` | Room messages — history, send (text or up to 9 images), delete your own (`?id=`) |
+| `GET` `POST` `DELETE` | `/api/chat/dm` | Direct-message threads — list, open/send, delete your own message (`?id=`) |
 | `GET` `POST` `DELETE` | `/api/stories` | 24-hour anonymous stories — feed, create, delete |
 | `POST` | `/api/stories/like` | Like or unlike a story |
 | `GET` `POST` | `/api/matches` | Suggested people from onboarding interests/goals |
 | `POST` | `/api/auth/update-name` | Auth metadata display name |
 | `POST` | `/api/auth/change-password` | Change password (requires the current one) |
+| `POST` | `/api/auth/google/exchange` | Server-side: redeem Google's `?code=` **and the PKCE verifier** for an `id_token`. The client secret never leaves the server |
 
 **Conventions worth knowing before you add an endpoint:**
 
 - Validation lives in [`src/lib/security.ts`](src/lib/security.ts) — `asUuid`, `asEmail`, `asText`, `asEnum`, `asInt` — and every failure returns a fixed message rather than a database error string.
 - **`profile/[id]` returns `200` with a partial body** for a private profile you are not connected with (`locked: true`). A real `404` means the person does not exist, or you blocked them.
 - Rate limits: change-password 5 per 5 min, story likes 60 per min.
+- Deleting a message is **sender-only and soft** — `DELETE` on both chat routes runs through `deleteMessage()` in [`src/lib/chat/delete.ts`](src/lib/chat/delete.ts), which blanks `content`/`media_paths` and sets `is_deleted` rather than removing the row, so the thread keeps its shape. Someone else's id is a `404`, not a silent success.
+- One message carries at most **9 images** (`MAX_IMAGES_PER_MESSAGE` in [`src/lib/chat/limits.ts`](src/lib/chat/limits.ts), kept in sync with the check constraint in migration `009`).
 - Input is never trusted — path ids go through `asUuid`, and enum-shaped values (`avatar_emoji`, `pronouns`, `message_type`) are validated against a fixed list before they can be written.
 
 ---
@@ -81,38 +87,49 @@ API surface.
 src/
 ├── app/
 │   ├── (auth)/               # Landing, login, signup, OTP verify, onboarding
+│   ├── auth/                 # Callbacks: /callback, /confirm, /google/callback
 │   ├── blog/                 # Public guides: index + /blog/[slug] articles
 │   ├── terms/ privacy/       # Legal pages
 │   ├── guides-sitemap.xml/   # Route handler: guides-only sitemap
 │   ├── sitemap.ts robots.ts  # Generated from PUBLIC_ROUTES in lib/seo.ts
 │   ├── app/                  # Authenticated area (guarded by proxy)
 │   │   ├── page.tsx          # Dashboard: mood check-in, weekly stats
-│   │   ├── journal/          # Private journaling
+│   │   ├── journal/          # Private journaling (+ /journal/[id])
 │   │   ├── connect/          # People + rooms discovery
 │   │   ├── discover/         # Searchable member directory
-│   │   ├── chats/[id]/       # Room & DM threads (realtime, images)
+│   │   ├── chats/            # Thread inbox; /chats/new starts a DM
+│   │   ├── chat/[id]/        # Room & DM thread (realtime, images, delete)
+│   │   ├── assessment/       # Guided assessment that writes a mood check-in
 │   │   ├── profile/[id]/     # Profile, /about and /mood for a connection
 │   │   ├── insights/         # Mood analytics & trends
-│   │   ├── activities/       # Guided exercises
-│   │   ├── counsellors/      # Counsellor directory
+│   │   ├── activities/       # Guided exercises (+ /activities/[id])
+│   │   ├── counsellors/      # Directory (+ /counsellor/[id])
 │   │   ├── crisis/           # Helplines + breathing exercise
+│   │   ├── help/             # About, FAQ, contact support (public)
 │   │   ├── story/create/     # Anonymous stories
-│   │   └── settings/         # Account, privacy, edit profile
+│   │   └── settings/         # Account, privacy, edit profile, change password
 │   └── api/                  # Route handlers (all auth-checked)
 │       ├── me/ (+ /alias)    # Profile read/write, alias availability
+│       ├── profile/          # ensure/, [id]/, [id]/mood/
 │       ├── profiles/         # Discover directory & search
-│       ├── profile/[id]/     # Profile, mood insights
 │       ├── connections/      # Connect / accept / withdraw / remove
-│       ├── blocks/           # Block & unblock
-│       ├── reports/          # Report a member
-│       ├── mood/ journal/ matches/
+│       ├── blocks/ reports/  # Block, unblock, report a member
+│       ├── mood/ journal/ (+ [id]) matches/
 │       ├── stories/ (+ /like)
-│       └── chat/ (rooms, messages, dms)
+│       ├── chat/             # rooms, messages, dms
+│       └── auth/             # update-name, change-password, google/exchange
 ├── components/
-│   ├── layout/               # AppLayout, SideNav, BottomNav, TopBar
+│   ├── layout/               # AppLayout, SideNav, BottomNav, TopBar, notification bell
+│   ├── chat/                 # AttachmentPreview, MessageMenu
+│   ├── auth/ common/ seo/    # Auth art, skeletons, cookie notice, <StructuredData/>
 │   └── ui/                   # Button, Card, Modal, EmojiSlider, MoodCheckin…
 ├── lib/
 │   ├── supabase/             # server.ts / client.ts / middleware.ts
+│   ├── security.ts           # asUuid / asEmail / asEnum… validators + rateLimit()
+│   ├── auth/                 # google-oauth.ts — the direct-Google flow
+│   ├── chat/                 # delete.ts / limits.ts / media.ts
+│   ├── auth-availability.ts  # Whether email+password sign-in is offered (it is not)
+│   ├── auth-errors.ts        # authErrorMessage() — fixed copy, no account enumeration
 │   ├── seo.ts                # Site URL, PUBLIC_ROUTES (sitemap source of truth)
 │   ├── seo-structured-data.ts# JSON-LD: Organization, WebSite, FAQPage
 │   ├── guides.ts             # Blog article content (single source)
@@ -121,13 +138,14 @@ src/
 │   ├── alias.ts              # Random alias word-list (silver-otter)
 │   ├── profile-options.ts    # Interests, goals, avatar choices
 │   ├── counsellors.ts        # Static counsellor directory
+│   ├── my-requests.ts        # Client-side record of requests you have sent
 │   └── constants.ts          # Nav items, mood emojis, features
-├── hooks/                    # useMediaQuery & friends
+├── hooks/                    # useMediaQuery
 └── proxy.ts                  # Session guard (Next 16 middleware)
 
 supabase/
-├── migrations/              # 001…008, run in order (see docs/DATABASE.md)
-└── maintenance/             # one-off data fixes, not schema
+├── migrations/               # 001…010, run in order (see docs/DATABASE.md)
+└── maintenance/              # one-off data fixes, not schema
 ```
 
 ## 🏗 Architecture at a Glance
@@ -146,7 +164,7 @@ No single check is trusted. A request has to pass **four independent layers**, a
 
 | # | Layer | What it stops |
 |---|---|---|
-| 1 | **Proxy guard** (`src/proxy.ts`) | Unauthenticated browsing. Refreshes the session cookie, bounces guests off `/app/*` and `/onboarding`, and strips cross-origin redirect targets so `?next=` cannot become an open redirect. |
+| 1 | **Proxy guard** (`src/proxy.ts`) | Unauthenticated browsing. Refreshes the session cookie, bounces guests off `/app/*` and `/onboarding` — except the four public pages in `PUBLIC_APP_PATHS` (`/app/crisis` and the three `/app/help/*` pages), because someone in distress must not be asked to sign in first — and strips cross-origin redirect targets so `?next=` cannot become an open redirect. |
 | 2 | **Route handler** (`src/app/api/**`) | Forged requests. Every endpoint re-verifies `auth.getUser()` server-side — a profile id in a URL is guessable, so a client-side gate would stop the tap but not the fetch. |
 | 3 | **Input validation** (`src/lib/security.ts`) | Malformed and oversized payloads. UUIDs, emails, enums, text length caps and integer ranges are checked before anything is written, and every error response is a fixed message rather than a database string. |
 | 4 | **Row Level Security** (Postgres) | The database itself. RLS decides what a signed-in user can read and write no matter what the application code asks for — this is the layer that holds even if all three above fail. |
@@ -165,15 +183,16 @@ No single check is trusted. A request has to pass **four independent layers**, a
 
 Right after signup you are taken through one guided flow. It is designed so no step needs scrolling on a laptop or a phone:
 
-1. **Basics** — display name, pronouns, location, and a short bio.
-2. **Avatar** — pick one of the built-in emoji avatars (no uploads needed).
-3. **Interests & goals** — choose from a fixed list, at least a few of each. These power Discover filtering and matching.
-4. **Review** — a summary of everything, plus the one decision that matters most for privacy:
+1. **Profile details** — display name, pronouns, location, a short bio, and the emoji avatar (no uploads needed). The **visibility** choice lives here too, so it is made in the first step rather than buried in settings:
 
    | Visibility | Who can see your profile |
    |---|---|
    | 🌐 **Public** | Anyone in Discover can open it. A globe badge marks it. |
    | 🔒 **Private** | Only people you are connected with can open it. Everyone else sees just the alias and avatar, with the rest locked away. |
+
+2. **Interests** — multi-select chips from a fixed list. These power Discover filtering.
+3. **Goals** — what you want out of the app; these shape the suggested people on the next step.
+4. **You're all set** — a summary of everything you chose (with an edit link back to any step), plus a first batch of suggested matches.
 
 Finishing the flow sets `onboarded_at`. Until that happens the Home screen shows a reminder banner and **Settings → Profile Setup** always lets you reopen and edit any step, including switching visibility later.
 
@@ -218,6 +237,7 @@ The client **secret is required** for this flow, because the code is redeemed se
 - **Reporting has consequences** — every report needs a reason from a closed list and can be filed once per person. At 20 reports a database trigger deletes the account's profile row automatically.
 - **Private media buckets** — chat images are never public. They are served only through signed URLs that expire after one hour.
 - **Changing your password requires the current one** — the endpoint re-authenticates before updating, so a stolen session cookie alone cannot lock you out.
+- **Crisis support is always close** — `/app/crisis` sits in the nav from anywhere, and it is one of the four pages that stays reachable without signing in.
 
 ### What the app does *not* claim
 
@@ -225,9 +245,8 @@ Honesty here matters more than a reassuring paragraph:
 
 - **Journal entries are not end-to-end encrypted.** They are protected by RLS and owner-only access, which means the database operator can read them. True E2E encryption is on the roadmap and is the only thing that would change this.
 - **Account removal is partial.** The app holds no service-role key, so the 20-report trigger deletes the `public.users` row but not the underlying `auth.users` login. Run a manual purge in the Supabase dashboard to remove the login too.
-- **Email sign-in is currently switched off.** Outbound SMTP is not configured yet, so login and signup offer Google only rather than presenting a form that dead-ends on a code that never arrives.
+- **Email sign-in is currently switched off.** Outbound SMTP is not configured yet, so login and signup offer Google only rather than presenting a form that dead-ends on a code that never arrives. The switch lives in [`src/lib/auth-availability.ts`](src/lib/auth-availability.ts).
 - **Private profiles are not anonymous accounts.** A private profile is hidden from non-connections, but the platform still holds the email address the account was created with.
-- **Crisis-first design** — helplines are one tap away from anywhere in the app.
 
 ## 🔍 SEO
 

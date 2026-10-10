@@ -88,8 +88,8 @@ the raw notes.
 |---|---|---|
 | `chat_rooms` | `id, name, topic, description, icon, max_members, is_active, created_at` | Seeded sample rooms |
 | `room_members` | `id, room_id, user_id, joined_at` | Membership is what makes a message readable (RLS) |
-| `messages` | `id, room_id, sender_id, content, message_type, is_anonymous, is_deleted, media_url, created_at` | Room messages; `media_url` points into the private bucket |
-| `direct_messages` | `id, sender_id, receiver_id, content, is_read, media_url, created_at` | 1:1 threads |
+| `messages` | `id, room_id, sender_id, content, message_type, is_anonymous, is_deleted, media_url, media_paths[], created_at` | Room messages; `media_paths` (≤ 9) is the current column, `media_url` is the pre-`009` single-image one |
+| `direct_messages` | `id, sender_id, receiver_id, content, is_read, is_deleted, media_url, media_paths[], created_at` | 1:1 threads. `is_deleted` is a soft delete that blanks `content` and `media_paths` |
 | `stories` | `id, user_id, content, media_url, mood_emoji, reactions, expires_at, is_active, created_at` | 24-hour, anonymous |
 | `story_likes` | `id, story_id, user_id, created_at` | One like per person per story |
 | `counsellors` | `id, name, speciality, qualifications, experience_years, rating, consultation_fee, is_verified, is_available, created_at` | Read-only directory |
@@ -184,7 +184,9 @@ supabase/
 │   ├── 005_profile_about_fields.sql
 │   ├── 006_safety_blocks_and_reports.sql
 │   ├── 007_chat_media_and_mood_sharing.sql
-│   └── 008_pronouns.sql
+│   ├── 008_pronouns.sql
+│   ├── 009_multi_image_messages.sql
+│   └── 010_direct_message_delete.sql
 └── maintenance/    # one-off data fixes, NOT part of the schema
     └── 999_orphan_dm_cleanup.sql
 ```
