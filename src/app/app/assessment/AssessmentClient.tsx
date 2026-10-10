@@ -35,13 +35,21 @@ export default function AssessmentPage() {
     setSaving(true)
     setError('')
     try {
-      const score = Math.max(1, Math.min(5, Math.round(energy / 2)))
+      // The slider, the API's own validation (`mood_score` 1–10) and the
+      // Insights timeline axis are all 1–10, so the picked value is stored
+      // as-is. It used to run through `Math.round(energy / 2)` clamped to 5,
+      // which silently halved every check-in — a 10/10 day was written as a 5,
+      // so the graph could never climb past the halfway line.
+      const score = energy
       const res = await fetch('/api/mood', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mood_score: score,
-          mood_emoji: score >= 4 ? '😌' : score === 3 ? '😐' : '😔',
+          // Same three emoji buckets as before (7+, 5–6, 4 and below), which
+          // now also line up with the bands the rest of the app reads:
+          // good ≥ 7, neutral ≥ 5, heavy below 5.
+          mood_emoji: score >= 7 ? '😌' : score >= 5 ? '😐' : '😔',
           note: `Check-in: energy ${energy}/10 · what would help: ${support}`,
         }),
       })

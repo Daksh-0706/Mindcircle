@@ -15,9 +15,11 @@ const securityHeaders = [
   // Don't leak full URLs (which may carry ids) to other origins.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Lock down what the page may ask the browser to do.
+  // camera=(self) lets our own origin use the camera (photo capture in chat
+  // and stories); everything else stays denied.
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    value: "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
   },
   // Enable HSTS so browsers stop accepting plaintext for this origin.
   // Only meaningful once served over HTTPS.

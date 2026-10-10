@@ -483,7 +483,19 @@ export default function ChatDetailPage() {
       {/* Full-screen thread: suppress the app's mobile header and bottom nav
           so the conversation owns the whole viewport. */}
       <AppNav showBack showMobileHeader={false} showBottomNav={false} />
-      <div className="flex h-full flex-col">
+      {/*
+        Phone/tablet: the app shell's wrapper only grows with content, so
+        `h-full` collapsed to the content height and the whole page scrolled —
+        the composer slid below the fold once the thread got long. Pin the
+        surface to the dynamic viewport height instead (minus the shell's pt-3
+        and a small bottom gap) so messages scroll internally and the composer
+        stays on screen. Desktop has the same failure: the shell chain above
+        this page never locks a definite height, so a long thread grows the
+        document and scrolls the whole page. Give desktop an explicit dvh too,
+        subtracting its chrome (TopBar h-14 + the content wrapper's p-6 pt-5),
+        so the message list — not the page — is what scrolls.
+      */}
+      <div className="flex h-[calc(100dvh_-_2.25rem)] flex-col lg:h-[calc(100dvh_-_6.25rem)]">
       {/* Chat header — back arrow, ring avatar, name. Nothing else: no call,
           video, sticker or attach affordances on this surface. */}
       <div className="mb-3 flex items-center gap-3">
