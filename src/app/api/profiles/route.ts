@@ -80,17 +80,19 @@ export async function GET(request: Request) {
   // Connection state for exactly the page we are returning.
   const ids = people.map((p) => p.id)
   const byId = new Map<string, 'none' | 'pending' | 'accepted' | 'outgoing' | 'incoming'>()
+  const linkIdById = new Map<string, string>()
   for (const id of ids) byId.set(id, 'none')
 
   if (ids.length > 0) {
     const { data: links } = await supabase
       .from('connections')
-      .select('user_a, user_b, status')
+      .select('id, user_a, user_b, status')
       .or(`user_a.in.(${ids.join(',')}),user_b.in.(${ids.join(',')})`)
 
     for (const link of links ?? []) {
       for (const id of [link.user_a, link.user_b]) {
         if (!byId.has(id)) continue
+        linkIdById.set(id, link.id)
         if (link.status === 'accepted') {
           byId.set(id, 'accepted')
           continue
@@ -116,6 +118,9 @@ export async function GET(request: Request) {
       interests: p.interests ?? [],
       goals: p.goals ?? [],
       connection: byId.get(p.id) ?? 'none',
+      // Needed to withdraw a pending request, which addresses the row by its
+      // own id rather than by peer id.
+      connection_id: linkIdById.get(p.id) ?? null,
       is_public: p.is_public ?? false,
     })),
   })

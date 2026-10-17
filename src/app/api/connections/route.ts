@@ -205,11 +205,14 @@ export async function DELETE(request: Request) {
   const connectionId = asUuid(body?.connection_id)
   if (!connectionId) return badRequest('Invalid connection_id.')
 
+  // Either side may withdraw, so match on whichever column holds the caller
+  // rather than assuming the requester was inserted as user_a. Assuming that
+  // made "cancel request" silently fail for anyone who was inserted as user_b.
   const { error } = await supabase
     .from('connections')
     .delete()
     .eq('id', connectionId)
-    .eq('user_a', user.id)
+    .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
     .eq('status', 'pending')
 
   if (error) return serverError('connections delete', error)
