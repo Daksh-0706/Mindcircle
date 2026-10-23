@@ -27,7 +27,6 @@ export function organizationLd() {
     logo: `${SITE_URL}/icon-512.png`,
     image: `${SITE_URL}${OG_IMAGE_PATH}`,
     email: CONTACT.email,
-    telephone: CONTACT.phone,
     address: {
       '@type': 'PostalAddress',
       addressCountry: 'IN',

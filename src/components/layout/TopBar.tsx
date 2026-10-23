@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, ChevronDown, LogOut, User, Settings } from 'lucide-react'
+import { ChevronDown, LogOut, User, Settings } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '../../lib/utils'
 import { NotificationBell } from './NotificationBell'
@@ -11,7 +11,6 @@ interface TopBarProps {
   userName?: string
   userInitials?: string
   userRole?: string
-  onSearch?: (query: string) => void
   onNotifications?: () => void
   onProfile?: () => void
   onSettings?: () => void
@@ -23,19 +22,12 @@ export function TopBar({
   userName = 'Guest',
   userInitials = 'GU',
   userRole = 'Member',
-  onSearch,
   onNotifications,
   onProfile,
   onSettings,
   onLogout,
 }: TopBarProps) {
-  const [searchQuery, setSearchQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSearch?.(searchQuery)
-  }
 
   return (
     <header className="glass-card sticky top-0 z-30 h-14 border-b border-white/50 backdrop-blur-md">
@@ -45,19 +37,6 @@ export function TopBar({
         </h1>
 
         <div className="flex items-center gap-4 flex-1 justify-end">
-          {/* Search */}
-          <form onSubmit={handleSearch} className="relative w-full max-w-md hidden md:block">
-            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-warm-gray size-5" aria-hidden="true" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
-              className="input-warm w-full pl-11"
-              aria-label="Search"
-            />
-          </form>
-
           {/* Pending requests */}
           <PendingRequestsDropdown />
 

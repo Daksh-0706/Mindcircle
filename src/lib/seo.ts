@@ -31,7 +31,6 @@ export const OG_IMAGE_PATH = '/og-image.png'
  */
 export const CONTACT = {
   email: 'daksh.24b0101340@abes.ac.in',
-  phone: '+91 8383034431',
   address: 'Uttar Pradesh, India',
   hours: 'Monday–Saturday, 9:00 AM – 7:00 PM IST',
 } as const

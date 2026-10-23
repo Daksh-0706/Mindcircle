@@ -27,6 +27,7 @@ export default function SupportPage() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<Status>('idle')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitError, setSubmitError] = useState('')
 
   const validate = () => {
     const next: Record<string, string> = {}
@@ -46,11 +47,36 @@ export default function SupportPage() {
     e.preventDefault()
     if (!validate()) return
     setStatus('sending')
-    // No inbound mail relay is wired up yet, so we do not pretend to deliver.
-    // The composed message is handed to the user's mail client instead, which
-    // reaches the same small team without us storing anything.
-    await new Promise((r) => setTimeout(r, 500))
-    setStatus('sent')
+    setSubmitError('')
+
+    // The message is stored server-side. Older builds of this page only opened
+    // the visitor's mail client, so on a phone with nothing configured it
+    // looked like the form ignored the click entirely.
+    try {
+      const response = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: subject.trim(),
+          message: message.trim(),
+          email: email.trim(),
+        }),
+      })
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          error?: string
+        } | null
+        setSubmitError(data?.error ?? 'Could not send that message. Please try again.')
+        setStatus('idle')
+        return
+      }
+
+      setStatus('sent')
+    } catch {
+      setSubmitError('Could not reach the server. Check your connection and try again.')
+      setStatus('idle')
+    }
   }
 
   const mailtoHref = `mailto:${CONTACT.email}?subject=${encodeURIComponent(
@@ -86,25 +112,20 @@ export default function SupportPage() {
                     <Send className="w-5 h-5 text-sage-dark" aria-hidden="true" />
                   </div>
                   <h2 className="font-heading text-xl font-semibold text-charcoal mt-4">
-                    Ready to send
+                    Message sent
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-charcoal/70 max-w-md mx-auto">
-                    We could not reach our inbox automatically, so please email these
-                    details directly. It reaches the same small team, and it is the
-                    fastest route to a real reply.
+                    We have your note. A real person reads every message we get, and
+                    we reply within two working days &mdash; to the address you left,
+                    or to your account email if you skipped that field.
                   </p>
-                  <a
-                    href={mailtoHref}
-                    className="inline-flex items-center gap-2 mt-5 h-11 px-6 rounded-full btn-gradient text-white text-sm font-medium hover:brightness-105 transition"
-                  >
-                    <Mail className="w-4 h-4" aria-hidden="true" />
-                    Open in my mail app
-                  </a>
                   <div className="mt-6 pt-6 border-t border-plum/10">
                     <button
                       type="button"
                       onClick={() => {
                         setStatus('idle')
+                        setSubmitError('')
+                        setErrors({})
                         setSubject('')
                         setMessage('')
                         setEmail('')
@@ -210,6 +231,24 @@ export default function SupportPage() {
                     )}
                   </div>
 
+                  {submitError && (
+                    <div
+                      role="alert"
+                      className="mt-5 rounded-xl border border-danger/25 bg-danger/5 px-4 py-3"
+                    >
+                      <p className="text-sm text-danger">{submitError}</p>
+                      {/* If the inbox write fails, the mail client is still a
+                          route that works — so the visitor is never stranded. */}
+                      <a
+                        href={mailtoHref}
+                        className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-plum hover:underline underline-offset-2"
+                      >
+                        <Mail className="w-4 h-4" aria-hidden="true" />
+                        Email us instead
+                      </a>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     size="lg"
@@ -254,13 +293,6 @@ export default function SupportPage() {
                       <span className="text-xs text-warm-gray">General support</span>
                     </span>
                   </a>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <Phone className="w-4 h-4 text-plum shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>
-                    <span className="block text-charcoal">{CONTACT.phone}</span>
-                    <span className="text-xs text-warm-gray">Not a crisis line</span>
-                  </span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <MapPin className="w-4 h-4 text-plum shrink-0 mt-0.5" aria-hidden="true" />

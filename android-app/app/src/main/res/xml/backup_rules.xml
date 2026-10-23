@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Everything the app stores is a Supabase session; nothing local is sensitive,
+     but backup is opt-out anyway so a reinstall does not restore a dead session. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>

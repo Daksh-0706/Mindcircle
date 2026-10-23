@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Only a scratch cache for camera captures. Nothing here is worth restoring:
+    a photo taken and then abandoned should not survive a reinstall.
+-->
+<paths>
+    <cache-path
+        name="camera"
+        path="camera/" />
+</paths>

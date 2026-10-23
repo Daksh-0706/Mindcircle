@@ -48,3 +48,12 @@ next-env.d.ts
 
 # Local dev server log written by the dev process
 .next-dev.log
+
+# Android signing + build artifacts
+android-app/keystore.properties
+android-app/*.jks
+android-app/local.properties
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Brand palette, lifted from src/app/globals.css so the app matches the site. -->
+<resources>
+    <color name="cream">#FFF8F0</color>
+    <color name="cream_dark">#F5EDE3</color>
+    <color name="plum">#4A2C5E</color>
+    <color name="plum_light">#6B4A80</color>
+    <color name="plum_dark">#3A1F4A</color>
+    <color name="terracotta">#C45D3E</color>
+    <color name="terracotta_light">#D4785C</color>
+    <color name="sage">#7B9E6B</color>
+    <color name="sage_dark">#5C7A4F</color>
+    <color name="charcoal">#2A2A2A</color>
+    <color name="warm_gray">#8A8A8A</color>
+    <color name="warm_gray_light">#B0B0B0</color>
+    <color name="border">#E8E0D8</color>
+    <color name="danger">#D64545</color>
+    <color name="white">#FFFFFF</color>
+    <color name="ic_launcher_background">#4A2C5E</color>
+</resources>
