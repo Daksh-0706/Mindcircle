@@ -1,4 +1,4 @@
-package app.mindcircle.android
+﻿package app.mindcircle.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

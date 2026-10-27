@@ -1,5 +1,6 @@
-package app.mindcircle.android.ui.screens
+﻿package app.mindcircle.android.ui.screens
 
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +21,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -32,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -55,8 +60,11 @@ import app.mindcircle.android.core.ChatRoom
 import app.mindcircle.android.core.DataList
 import app.mindcircle.android.core.DataWrapper
 import app.mindcircle.android.core.Match
+import app.mindcircle.android.core.MediaUploader
 import app.mindcircle.android.core.Story
+import app.mindcircle.android.core.Supabase
 import app.mindcircle.android.core.jsonBody
+import app.mindcircle.android.ui.components.CameraCaptureScreen
 import app.mindcircle.android.ui.components.Chip
 import app.mindcircle.android.ui.components.EmptyState
 import app.mindcircle.android.ui.components.ErrorBanner
@@ -65,6 +73,8 @@ import app.mindcircle.android.ui.components.SkeletonRow
 import app.mindcircle.android.ui.components.fadeEdges
 import app.mindcircle.android.ui.theme.Palette
 import app.mindcircle.android.ui.theme.Shapes
+import coil3.compose.AsyncImage
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -72,7 +82,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Connect — Peer Circles.
+ * Connect â€” Peer Circles.
  *
  * A native port of the web's `/app/connect`: a hero, three tabs (active rooms,
  * 24-hour stories, people you may relate with) and a story composer. The rooms
@@ -96,6 +106,60 @@ fun ConnectScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var composerOpen by remember { mutableStateOf(false) }
 
+    // Story creation is a choice on the web: write something, or snap a photo.
+    // The app only ever had the first, so "+ New story" never offered a camera.
+    var chooserOpen by remember { mutableStateOf(false) }
+    var storyPhoto by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var postingPhoto by remember { mutableStateOf(false) }
+    var photoError by remember { mutableStateOf<String?>(null) }
+
+    // The viewfinder is our own composable now, so this is just a flag â€” no
+    // ActivityResult round trip to lose the photo in.
+    var cameraOpen by rememberSaveable { mutableStateOf(false) }
+
+    val context = LocalContext.current
+
+    /**
+     * Uploads the captured photo, then files the story.
+     *
+     * The upload only happens on Share, not on capture: a retake would
+     * otherwise leave a file behind in the public bucket on every attempt.
+     */
+    fun sharePhotoStory(uri: Uri) {
+        if (postingPhoto) return
+        postingPhoto = true
+        photoError = null
+        scope.launch {
+            val uid = myId ?: Supabase.auth.currentUserOrNull()?.id
+            if (uid == null) {
+                postingPhoto = false
+                photoError = "Your session has expired. Please sign in again."
+                return@launch
+            }
+            runCatching {
+                val url = MediaUploader.uploadStoryPhoto(context, uri, uid)
+                ApiClient.post<DataWrapper<Story>>(
+                    "/api/stories",
+                    jsonBody(
+                        // Same placeholder the web uses for an instant photo
+                        // story, and a mood so the API's mood check passes.
+                        "content" to "ðŸ“· A moment from my day",
+                        "media_url" to url,
+                        "mood_emoji" to "ðŸ“·",
+                    ),
+                )
+            }.onSuccess {
+                stories = (stories ?: emptyList()) + it.data
+                activeTab = "Stories"
+                storyPhoto = null
+                chooserOpen = false
+            }.onFailure {
+                photoError = it.message ?: "Could not share that story."
+            }
+            postingPhoto = false
+        }
+    }
+
     // One fetch per tab, the way the web loads lazily too.
     suspend fun loadRooms() {
         rooms = runCatching { ApiClient.get<DataList<ChatRoom>>("/api/chat").data }
@@ -116,7 +180,7 @@ fun ConnectScreen(
     }
 
     // The rooms tab is already selected on first composition, so nothing ever
-    // fires the tab's onClick — without this the skeleton rows sat there
+    // fires the tab's onClick â€” without this the skeleton rows sat there
     // forever and no request was ever made.
     LaunchedEffect(Unit) { loadRooms() }
 
@@ -152,7 +216,7 @@ fun ConnectScreen(
                     )
                 }
             }
-            NewStoryPill(onClick = { composerOpen = true })
+            NewStoryPill(onClick = { chooserOpen = true })
         }
 
         error?.let { ErrorBanner(it) }
@@ -208,6 +272,49 @@ fun ConnectScreen(
         }
 
         Spacer(Modifier.height(24.dp))
+    }
+
+    if (chooserOpen) {
+        StoryChooserSheet(
+            onDismiss = { chooserOpen = false },
+            onWrite = {
+                chooserOpen = false
+                composerOpen = true
+            },
+            onCamera = {
+                chooserOpen = false
+                cameraOpen = true
+            },
+        )
+    }
+
+    storyPhoto?.let { uri ->
+        PhotoStorySheet(
+            photo = uri,
+            sharing = postingPhoto,
+            error = photoError,
+            onShare = { sharePhotoStory(uri) },
+            onRetake = {
+                storyPhoto = null
+                photoError = null
+                cameraOpen = true
+            },
+            onDismiss = {
+                storyPhoto = null
+                photoError = null
+            },
+        )
+    }
+
+    if (cameraOpen) {
+        CameraCaptureScreen(
+            onClose = { cameraOpen = false },
+            onCaptured = { uri ->
+                cameraOpen = false
+                photoError = null
+                storyPhoto = uri
+            },
+        )
     }
 
     if (composerOpen) {
@@ -372,7 +479,7 @@ private fun RoomsTab(rooms: List<ChatRoom>?, onOpenRoom: (String) -> Unit) {
             repeat(3) { SkeletonRow() }
         }
         rooms.isEmpty() -> EmptyState(
-            icon = "✨",
+            icon = "âœ¨",
             title = "No rooms yet",
             description = "Support circles will appear here once they are created.",
         )
@@ -457,7 +564,7 @@ private fun RoomCard(room: ChatRoom, art: RoomArt, onOpenRoom: (String) -> Unit)
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                 ) {
                     Text(
-                        if (room.isMember) "Open room  ›" else "Join quietly  ›",
+                        if (room.isMember) "Open room  â€º" else "Join quietly  â€º",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = Palette.Plum,
                     )
@@ -478,9 +585,9 @@ private fun StoriesTab(
             repeat(2) { SkeletonRow() }
         }
         stories.isEmpty() -> EmptyState(
-            icon = "✨",
+            icon = "âœ¨",
             title = "No stories yet",
-            description = "Be the first to share something — your words might be exactly what " +
+            description = "Be the first to share something â€” your words might be exactly what " +
                 "someone needs today.",
         )
         else -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -488,7 +595,7 @@ private fun StoriesTab(
                 McCard(modifier = Modifier.fillMaxWidth()) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(story.moodEmoji ?: "💜", fontSize = 22.sp)
+                            Text(story.moodEmoji ?: "ðŸ’œ", fontSize = 22.sp)
                             Spacer(Modifier.width(10.dp))
                             Text(
                                 if (story.isMine) "You" else "Anonymous",
@@ -505,6 +612,19 @@ private fun StoriesTab(
                             }
                         }
                         Spacer(Modifier.height(10.dp))
+                        story.mediaUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                            AsyncImage(
+                                model = url,
+                                contentDescription = "Story photo",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(190.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Palette.CreamDark),
+                            )
+                            Spacer(Modifier.height(10.dp))
+                        }
                         Text(
                             story.content,
                             style = MaterialTheme.typography.bodyMedium,
@@ -522,7 +642,7 @@ private fun StoriesTab(
                                     .padding(horizontal = 14.dp, vertical = 6.dp),
                             ) {
                                 Text(
-                                    if (story.likedByMe) "♥  ${story.likeCount}" else "♡  ${story.likeCount}",
+                                    if (story.likedByMe) "â™¥  ${story.likeCount}" else "â™¡  ${story.likeCount}",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (story.likedByMe) Color.White else Palette.Plum,
                                 )
@@ -569,7 +689,7 @@ private fun PeopleTab(matches: List<Match>?, myId: String?, onSayHello: (String)
         when {
             matches == null -> repeat(2) { SkeletonRow() }
             matches.isEmpty() -> EmptyState(
-                icon = "👥",
+                icon = "ðŸ‘¥",
                 title = "No matches yet",
                 description = "When another member with a similar journey joins, you'll see them here.",
             )
@@ -633,15 +753,254 @@ private fun PeopleTab(matches: List<Match>?, myId: String?, onSayHello: (String)
 }
 
 /**
- * Story composer. Text plus a mood emoji — the media picker lands with the
+ * The two ways to create a story, matching the web's "Share a moment" sheet.
+ *
+ * Text-only used to be the whole thing in the app: the photo path existed on
+ * the web but had no equivalent here, so "Click a story" was simply never
+ * offered.
+ */
+@Composable
+private fun StoryChooserSheet(
+    onDismiss: () -> Unit,
+    onWrite: () -> Unit,
+    onCamera: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(Palette.White)
+                .clickable(enabled = false) {}
+                .padding(bottom = 20.dp),
+        ) {
+            // Gradient header, same copy as the web so the two read as one app.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(Color(0xFF4A2C5E), Color(0xFFC45D3E))
+                        )
+                    )
+                    .padding(horizontal = 22.dp, vertical = 20.dp),
+            ) {
+                Column {
+                    Text(
+                        "YOUR STORY",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 1.8.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = Palette.Cream.copy(alpha = 0.7f),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Share a moment",
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = Palette.Cream,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Anonymous, kind, and gone in 24 hours.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Palette.Cream.copy(alpha = 0.85f),
+                    )
+                }
+            }
+
+            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+                StoryChoiceRow(
+                    icon = R.drawable.ic_pencil,
+                    iconTint = Palette.Plum,
+                    iconBg = Color(0xFFEFEAFB),
+                    title = "Write a story",
+                    body = "Put your thoughts into words â€” with a mood and a photo if you like.",
+                    onClick = onWrite,
+                )
+                Spacer(Modifier.height(12.dp))
+                StoryChoiceRow(
+                    icon = R.drawable.ic_camera,
+                    iconTint = Color(0xFFC45D3E),
+                    iconBg = Color(0xFFFBE7EC),
+                    title = "Click a story",
+                    body = "Snap a moment â€” one more tap and it's live. Nothing to write.",
+                    onClick = onCamera,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoryChoiceRow(
+    icon: Int,
+    iconTint: Color,
+    iconBg: Color,
+    title: String,
+    body: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .border(1.dp, Palette.Border, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(iconBg),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = Palette.Charcoal,
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                color = Palette.WarmGray,
+            )
+        }
+    }
+}
+
+/**
+ * Preview of a captured story photo before it goes live.
+ *
+ * Uploading starts on Share, never on capture, so a retake cannot leave an
+ * orphan behind in the public bucket.
+ */
+@Composable
+private fun PhotoStorySheet(
+    photo: Uri,
+    sharing: Boolean,
+    error: String?,
+    onShare: () -> Unit,
+    onRetake: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Palette.White)
+                .clickable(enabled = false) {}
+                .padding(16.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(320.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Palette.CreamDark),
+            ) {
+                AsyncImage(
+                    model = photo,
+                    contentDescription = "Your story photo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            error?.let {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.Danger,
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .clip(Shapes.Pill)
+                        .background(Palette.CreamDark)
+                        .clickable(enabled = !sharing, onClick = onRetake)
+                        .padding(horizontal = 18.dp, vertical = 11.dp),
+                ) {
+                    Text(
+                        "Retake",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Palette.Charcoal,
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(Shapes.Pill)
+                        .background(Palette.Plum)
+                        .clickable(enabled = !sharing, onClick = onShare)
+                        .padding(vertical = 11.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (sharing) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            color = Palette.White,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    } else {
+                        Text(
+                            "Share anonymously",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = Palette.White,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Story composer. Text plus a mood emoji â€” the media picker lands with the
  * Storage work, so the picker is deliberately absent rather than a button that
  * does nothing.
  */
 @Composable
 private fun StoryComposer(onDismiss: () -> Unit, onCreate: (String, String) -> Unit) {
     var content by remember { mutableStateOf("") }
-    var emoji by remember { mutableStateOf("💜") }
-    val options = listOf("💜", "🌿", "🌙", "☀️", "🕊️", "🌊", "🔥", "🌸")
+    var emoji by remember { mutableStateOf("ðŸ’œ") }
+    val options = listOf("ðŸ’œ", "ðŸŒ¿", "ðŸŒ™", "â˜€ï¸", "ðŸ•Šï¸", "ðŸŒŠ", "ðŸ”¥", "ðŸŒ¸")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -651,7 +1010,7 @@ private fun StoryComposer(onDismiss: () -> Unit, onCreate: (String, String) -> U
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
-                    placeholder = { Text("Say what is on your mind…", color = Palette.WarmGray) },
+                    placeholder = { Text("Say what is on your mindâ€¦", color = Palette.WarmGray) },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -726,13 +1085,13 @@ internal fun parseIso(iso: String): Long? = runCatching {
 
 /** Room emoji, mirroring `roomEmoji` in the web's src/lib/alias.ts. */
 internal fun roomEmoji(name: String): String = when (name.lowercase()) {
-    "quiet mornings" -> "☕"
-    "exam overwhelm" -> "📚"
-    "anonymous support" -> "🤝"
-    "late-night listeners" -> "🎧"
-    "creative corner" -> "🎨"
-    "study buddies" -> "✍️"
-    else -> "💬"
+    "quiet mornings" -> "â˜•"
+    "exam overwhelm" -> "ðŸ“š"
+    "anonymous support" -> "ðŸ¤"
+    "late-night listeners" -> "ðŸŽ§"
+    "creative corner" -> "ðŸŽ¨"
+    "study buddies" -> "âœï¸"
+    else -> "ðŸ’¬"
 }
 
 /** Room blurb, mirroring `roomDescription` in the web's src/lib/alias.ts. */

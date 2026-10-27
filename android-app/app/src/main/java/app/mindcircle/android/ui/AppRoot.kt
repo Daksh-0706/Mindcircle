@@ -1,4 +1,4 @@
-package app.mindcircle.android.ui
+﻿package app.mindcircle.android.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -83,6 +84,7 @@ import app.mindcircle.android.ui.screens.AssessmentScreen
 import app.mindcircle.android.ui.screens.ConnectScreen
 import app.mindcircle.android.ui.screens.AboutScreen
 import app.mindcircle.android.ui.screens.ChangePasswordScreen
+import app.mindcircle.android.ui.screens.E2eeSettingsScreen
 import app.mindcircle.android.ui.screens.EditProfileScreen
 import app.mindcircle.android.ui.screens.FaqScreen
 import app.mindcircle.android.ui.screens.SettingsScreen
@@ -112,6 +114,7 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val EDIT_PROFILE = "settings/edit-profile"
     const val CHANGE_PASSWORD = "settings/change-password"
+    const val E2EE_SETTINGS = "settings/encryption"
     const val HELP_FAQ = "help/faq"
     const val HELP_SUPPORT = "help/support"
     const val HELP_ABOUT = "help/about"
@@ -141,6 +144,7 @@ private val ROUTE_TITLES = mapOf(
     Routes.SETTINGS to "",
     // The Settings sub-pages draw their own headings too, like Settings does.
     Routes.EDIT_PROFILE to "",
+    Routes.E2EE_SETTINGS to "",
     Routes.ONBOARDING to "Profile setup",
     Routes.CHANGE_PASSWORD to "",
     Routes.HELP_FAQ to "",
@@ -153,7 +157,7 @@ private val ROUTE_TITLES = mapOf(
 private data class BottomItem(val route: String, val label: String, val icon: Int)
 
 // The web's NAV_ITEMS, with lucide line icons ported to vector drawables by
-// scripts/convert-icons.mjs — not emoji, which never match the web's weight.
+// scripts/convert-icons.mjs â€” not emoji, which never match the web's weight.
 private val bottomItems = listOf(
     BottomItem(Routes.HOME, "Home", R.drawable.ic_home),
     BottomItem(Routes.JOURNAL, "Journal", R.drawable.ic_journal),
@@ -162,7 +166,7 @@ private val bottomItems = listOf(
     BottomItem(Routes.CHATS, "Chats", R.drawable.ic_chats),
 )
 
-/** Everything reachable from the drawer — the web's SIDEBAR_ITEMS. */
+/** Everything reachable from the drawer â€” the web's SIDEBAR_ITEMS. */
 private data class DrawerItem(val route: String, val label: String, val icon: Int)
 
 private val drawerItems = listOf(
@@ -178,7 +182,7 @@ private val drawerItems = listOf(
     DrawerItem(Routes.CRISIS, "Crisis Support", R.drawable.ic_crisis),
 )
 
-/** The drawer's second group — the web's SUPPORT section. */
+/** The drawer's second group â€” the web's SUPPORT section. */
 private data class SupportItem(val label: String, val icon: Int)
 
 private val supportItems = listOf(
@@ -196,11 +200,19 @@ fun AppRoot() {
     val context = LocalContext.current
     LaunchedEffect(Unit) { viewModel.attach(context) }
 
+    // Hoisted above the auth-state switch on purpose. The controller used to be
+    // created inside [AppScaffold], which only exists while the state is
+    // SignedIn â€” so any moment that branch left the composition threw the whole
+    // back stack away. Leaving the app for the camera and coming back was
+    // enough: you landed on Home with the captured photo dropped. Owning it here
+    // keeps the route across those switches.
+    val navController = rememberNavController()
+
     val state by viewModel.state.collectAsState()
     when (val current = state) {
         is AppViewModel.AuthState.Loading -> LoadingGate()
         is AppViewModel.AuthState.SignedOut -> LoginScreen(viewModel)
-        is AppViewModel.AuthState.SignedIn -> AppScaffold(viewModel, current)
+        is AppViewModel.AuthState.SignedIn -> AppScaffold(viewModel, current, navController)
     }
 }
 
@@ -223,8 +235,11 @@ private fun LoadingGate() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AppScaffold(viewModel: AppViewModel, state: AppViewModel.AuthState.SignedIn) {
-    val navController = rememberNavController()
+private fun AppScaffold(
+    viewModel: AppViewModel,
+    state: AppViewModel.AuthState.SignedIn,
+    navController: NavHostController,
+) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -248,7 +263,7 @@ private fun AppScaffold(viewModel: AppViewModel, state: AppViewModel.AuthState.S
     }
 
     // The bar has to follow the *current* route, not just the last tap. Setting
-    // it inside onDestination left it stale whenever you popped back — Home
+    // it inside onDestination left it stale whenever you popped back â€” Home
     // would still be titled "Check-in". Re-derived from the back stack instead.
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -286,7 +301,7 @@ private fun AppScaffold(viewModel: AppViewModel, state: AppViewModel.AuthState.S
 
                 // Current route drives the active pill, the way the web's
                 // SideNav highlights the page you are already on.
-                // currentBackStackEntryAsState (not the plain property) — otherwise the
+                // currentBackStackEntryAsState (not the plain property) â€” otherwise the
                 // highlight is computed once and never moves when you navigate.
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoot = navBackStackEntry
@@ -538,14 +553,14 @@ private fun AppScaffold(viewModel: AppViewModel, state: AppViewModel.AuthState.S
                 composable(Routes.COUNSELLORS) {
                     ShellPlaceholder(
                         title = "Counsellors",
-                        body = "The counsellor directory is still to be ported — the web has it " +
+                        body = "The counsellor directory is still to be ported â€” the web has it " +
                             "at /app/counsellors.",
                         onOpenChats = { onDestination(Routes.CRISIS, "Crisis Support") },
                     )
                 }
                 composable(Routes.SETTINGS) {
                     // The screen draws its own large "Settings" hero, so the app
-                    // bar stays blank (see ROUTE_TITLES) — otherwise the word
+                    // bar stays blank (see ROUTE_TITLES) â€” otherwise the word
                     // appears twice, once in the bar and once right under it.
                     SettingsScreen(
                         viewModel = viewModel,
@@ -583,6 +598,9 @@ private fun AppScaffold(viewModel: AppViewModel, state: AppViewModel.AuthState.S
                 }
                 composable(Routes.CHANGE_PASSWORD) {
                     ChangePasswordScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Routes.E2EE_SETTINGS) {
+                    E2eeSettingsScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Routes.HELP_FAQ) {
                     FaqScreen(onBack = { navController.popBackStack() })

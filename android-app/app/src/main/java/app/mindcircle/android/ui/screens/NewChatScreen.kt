@@ -43,6 +43,7 @@ import app.mindcircle.android.core.ApiClient
 import app.mindcircle.android.core.ConnectionRow
 import app.mindcircle.android.core.DataList
 import app.mindcircle.android.core.DmThread
+import app.mindcircle.android.core.e2ee.E2eeManager
 import app.mindcircle.android.core.jsonBody
 import app.mindcircle.android.ui.components.EmptyState
 import app.mindcircle.android.ui.components.ErrorBanner
@@ -83,8 +84,14 @@ fun NewChatScreen(
     }
 
     val threads by produceState<List<DmThread>?>(null, reloadKey) {
-        value = runCatching { ApiClient.get<DataList<DmThread>>("/api/chat/dm").data }
+        // Previews arrive sealed; open them (or fall back to the placeholder)
+        // the same way the Chats list does.
+        val fetched = runCatching { ApiClient.get<DataList<DmThread>>("/api/chat/dm").data }
             .getOrDefault(emptyList())
+        value = fetched.map { t ->
+            if (t.lastMessage == null) t
+            else t.copy(lastMessage = E2eeManager.decryptDmText(t.participantId, t.lastMessage))
+        }
     }
 
     val q = query.trim().lowercase()

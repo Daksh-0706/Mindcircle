@@ -31,6 +31,14 @@ object MediaUploader {
     const val MAX_IMAGES_PER_MESSAGE = 9
 
     private const val BUCKET = "chat-media"
+
+    /**
+     * Stories live in their own public bucket. `/api/stories` stores an http(s)
+     * `media_url` that every reader loads directly, so unlike chat attachments
+     * this one cannot be a private path with a signed URL behind it.
+     */
+    private const val STORY_BUCKET = "story-media"
+
     private const val JPEG_QUALITY = 82
 
     /** Longest edge after downscaling. Phone cameras produce 4000px+ files. */
@@ -57,6 +65,28 @@ object MediaUploader {
             }
 
             path
+        }
+
+    /**
+     * Uploads a story photo to the public `story-media` bucket.
+     *
+     * Same downscale/EXIF pipeline as a chat attachment, but returns the public
+     * URL rather than the storage path, because that URL is what gets persisted
+     * in `stories.media_url` and rendered by everyone else.
+     */
+    suspend fun uploadStoryPhoto(context: Context, uri: Uri, userId: String): String =
+        withContext(Dispatchers.IO) {
+            val jpeg = decodeAndCompress(context, uri)
+                ?: throw IllegalArgumentException("That photo could not be read as an image.")
+
+            val path = "$userId/${UUID.randomUUID()}.jpg"
+            val bucket = Supabase.client.storage.from(STORY_BUCKET)
+
+            bucket.upload(path, jpeg) {
+                contentType = ContentType.Image.JPEG
+            }
+
+            bucket.publicUrl(path)
         }
 
     /**

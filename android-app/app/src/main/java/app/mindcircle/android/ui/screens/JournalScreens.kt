@@ -44,9 +44,11 @@ import app.mindcircle.android.core.ApiClient
 import app.mindcircle.android.core.DataList
 import app.mindcircle.android.core.DataWrapper
 import app.mindcircle.android.core.JournalEntry
+import app.mindcircle.android.core.e2ee.E2eeManager
 import app.mindcircle.android.core.jsonBody
 import app.mindcircle.android.data.Reference
 import app.mindcircle.android.ui.components.Chip
+import app.mindcircle.android.ui.components.E2eeGate
 import app.mindcircle.android.ui.components.EmptyState
 import app.mindcircle.android.ui.components.ErrorBanner
 import app.mindcircle.android.ui.components.GradientButton
@@ -68,11 +70,32 @@ fun JournalScreen(onWrite: () -> Unit, onOpen: (String) -> Unit) {
     var entries by remember { mutableStateOf<List<JournalEntry>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var pendingDelete by remember { mutableStateOf<JournalEntry?>(null) }
+    // Rows still stored as plaintext from before E2EE existed, with their
+    // original text so "Encrypt now" can seal them in place.
+    var legacyEntries by remember { mutableStateOf<List<JournalEntry>>(emptyList()) }
+    var migrating by remember { mutableStateOf(false) }
 
     fun load() {
         scope.launch {
             runCatching { ApiClient.get<DataList<JournalEntry>>("/api/journal").data }
-                .onSuccess { entries = it }
+                .onSuccess { raw ->
+                    val legacy = ArrayList<JournalEntry>()
+                    entries = raw.map { entry ->
+                        when {
+                            entry.content.startsWith("mc1:") -> try {
+                                entry.copy(content = E2eeManager.decryptPrivateText(entry.content))
+                            } catch (_: Exception) {
+                                // Wrong device / wrong phrase: say so instead of showing nothing.
+                                entry.copy(content = "🔒 Encrypted entry\nOpen it from the device that holds your recovery phrase.")
+                            }
+                            else -> {
+                                legacy.add(entry)
+                                entry
+                            }
+                        }
+                    }
+                    legacyEntries = legacy
+                }
                 .onFailure {
                     entries = emptyList()
                     error = it.message ?: "Could not load your journal."
@@ -80,8 +103,28 @@ fun JournalScreen(onWrite: () -> Unit, onOpen: (String) -> Unit) {
         }
     }
 
+    /** Seal legacy plaintext rows in place, one PATCH each. */
+    fun migrateLegacy() {
+        if (migrating) return
+        migrating = true
+        scope.launch {
+            runCatching {
+                for (entry in legacyEntries) {
+                    ApiClient.patchIgnoring(
+                        "/api/journal/${entry.id}",
+                        jsonBody("content" to E2eeManager.encryptPrivateText(entry.content)),
+                    )
+                }
+            }
+            legacyEntries = emptyList()
+            load()
+            migrating = false
+        }
+    }
+
     androidx.compose.runtime.LaunchedEffect(Unit) { load() }
 
+    E2eeGate {
     Box(Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -106,6 +149,27 @@ fun JournalScreen(onWrite: () -> Unit, onOpen: (String) -> Unit) {
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             ) {
                 Text("🔒  Only you can see this", style = MaterialTheme.typography.labelMedium, color = Palette.SageDark)
+            }
+
+            // Rows written before E2EE existed: readable here, sealed in place
+            // by one tap — same affordance the web's journal page shows.
+            if (legacyEntries.isNotEmpty()) {
+                McCard(color = Palette.Peach) {
+                    Column {
+                        Text(
+                            "${legacyEntries.size} older ${if (legacyEntries.size == 1) "entry was" else "entries were"} written before encryption.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Palette.Terracotta,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        GradientButton(
+                            text = if (migrating) "Encrypting…" else "Encrypt now",
+                            loading = migrating,
+                            enabled = !migrating,
+                            onClick = { migrateLegacy() },
+                        )
+                    }
+                }
             }
 
             val current = entries
@@ -166,6 +230,7 @@ fun JournalScreen(onWrite: () -> Unit, onOpen: (String) -> Unit) {
             },
         )
     }
+    }
 }
 
 @Composable
@@ -221,6 +286,7 @@ fun JournalWriteScreen(onDone: () -> Unit) {
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
+    E2eeGate {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -292,8 +358,11 @@ fun JournalWriteScreen(onDone: () -> Unit) {
             onClick = {
                 saving = true
                 error = null
+                // Sealed on this device first — the server only gets ciphertext.
+                val fullContent = listOfNotNull(title.trim().ifBlank { null }, content.trim()).joinToString("\n\n")
+                val sealed = E2eeManager.encryptPrivateText(fullContent)
                 val body = listOfNotNull(
-                    "content" to listOfNotNull(title.trim().ifBlank { null }, content.trim()).joinToString("\n\n"),
+                    "content" to sealed,
                     "mood_tag" to moodTag,
                 ).toTypedArray()
                 scope.launch {
@@ -307,17 +376,33 @@ fun JournalWriteScreen(onDone: () -> Unit) {
             },
         )
     }
+    }
 }
 
 /** One entry, read-only. */
 @Composable
 fun JournalDetailScreen(entryId: String, onBack: () -> Unit, onWrite: () -> Unit) {
-    val entry by produceState<JournalEntry?>(initialValue = null, entryId) {
-        value = runCatching {
-            ApiClient.get<DataWrapper<JournalEntry>>("/api/journal/$entryId").data
-        }.getOrNull()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // Entry + load problem in one state: a sealed row this device cannot open
+    // must say why, not spin forever.
+    var entry by remember { mutableStateOf<JournalEntry?>(null) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+
+    androidx.compose.runtime.LaunchedEffect(entryId) {
+        loadError = null
+        entry = null
+        runCatching {
+            val data = ApiClient.get<DataWrapper<JournalEntry>>("/api/journal/$entryId").data
+            if (data.content.startsWith("mc1:")) {
+                data.copy(content = E2eeManager.decryptPrivateText(data.content))
+            } else {
+                data
+            }
+        }.onSuccess { entry = it }
+            .onFailure { loadError = it.message ?: "This entry could not be loaded." }
     }
 
+    E2eeGate {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -325,12 +410,14 @@ fun JournalDetailScreen(entryId: String, onBack: () -> Unit, onWrite: () -> Unit
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        when (val current = entry) {
-            null -> {
+        when {
+            loadError != null -> ErrorBanner(loadError!!)
+            entry == null -> {
                 Shimmer(Modifier.fillMaxWidth().height(40.dp))
                 Shimmer(Modifier.fillMaxWidth().height(240.dp))
             }
             else -> {
+                val current = entry!!
                 McCard {
                     Column {
                         Text(
@@ -361,6 +448,7 @@ fun JournalDetailScreen(entryId: String, onBack: () -> Unit, onWrite: () -> Unit
                 PurpleButton(text = "Write a new entry", onClick = onWrite)
             }
         }
+    }
     }
 }
 

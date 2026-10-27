@@ -1,11 +1,10 @@
-package app.mindcircle.android.ui.screens
+﻿package app.mindcircle.android.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.foundation.Image
-import androidx.core.content.FileProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -71,10 +70,12 @@ import app.mindcircle.android.core.ChatRoom
 import app.mindcircle.android.core.DataList
 import app.mindcircle.android.core.DmMessage
 import app.mindcircle.android.core.DmThread
+import app.mindcircle.android.core.e2ee.E2eeManager
 import app.mindcircle.android.core.MediaUploader
 import app.mindcircle.android.core.Supabase
 import io.github.jan.supabase.auth.auth
 import app.mindcircle.android.core.jsonBody
+import app.mindcircle.android.ui.components.CameraCaptureScreen
 import app.mindcircle.android.ui.components.EmptyState
 import app.mindcircle.android.ui.components.ErrorBanner
 import app.mindcircle.android.ui.components.GradientButton
@@ -97,20 +98,19 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import java.io.File
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Chats — anonymous rooms plus the direct-message inbox.
+ * Chats â€” anonymous rooms plus the direct-message inbox.
  *
  * Rooms open immediately (`GET /api/chat/messages` auto-joins the room, so
  * there is no separate join step to break).
  */
 /**
- * Chats — your private one-on-one conversations.
+ * Chats â€” your private one-on-one conversations.
  *
  * Rooms deliberately do not live here. On the web they sit under Connect /
  * Peer Circles, and duplicating them made this screen a long scroll of
@@ -130,9 +130,14 @@ fun ChatsScreen(
     fun load() {
         scope.launch {
             runCatching { ApiClient.get<DataList<DmThread>>("/api/chat/dm").data }
-                .onSuccess {
-                    threads = it
-                    peerNames = it.associate { t -> t.participantId to (t.name ?: t.alias ?: "Member") }
+                .onSuccess { fetched ->
+                    // Previews arrive sealed; open them here (locked vaults
+                    // show the placeholder) exactly like the thread does.
+                    threads = fetched.map { t ->
+                        if (t.lastMessage == null) t
+                        else t.copy(lastMessage = E2eeManager.decryptDmText(t.participantId, t.lastMessage))
+                    }
+                    peerNames = fetched.associate { t -> t.participantId to (t.name ?: t.alias ?: "Member") }
                 }
                 .onFailure { threads = emptyList() }
         }
@@ -176,7 +181,7 @@ fun ChatsScreen(
                 ) {
                     Spacer(Modifier.height(20.dp))
                     app.mindcircle.android.ui.components.EmptyState(
-                        icon = "💬",
+                        icon = "ðŸ’¬",
                         title = "No conversations yet",
                         description = "Start a quiet one-on-one with someone you have " +
                             "connected with.",
@@ -273,7 +278,7 @@ fun ChatsScreen(
 
 /**
  * A room thread. Loads history once, then listens on the realtime channel for
- * new rows — with a slow poll underneath so a dropped socket never freezes the
+ * new rows â€” with a slow poll underneath so a dropped socket never freezes the
  * conversation.
  */
 @Composable
@@ -295,24 +300,9 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
     var viewerImage by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
-    // TakePicture writes into a file we own and hands back its uri, so the
-    // camera needs no WRITE_EXTERNAL_STORAGE on modern Android.
-    val newCameraUri: () -> Uri = {
-        val dir = File(context.cacheDir, "camera").apply { mkdirs() }
-        FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            File(dir, "capture-${System.currentTimeMillis()}.jpg"),
-        )
-    }
-    var cameraPending by remember { mutableStateOf<Uri?>(null) }
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture(),
-    ) { ok ->
-        val uri = cameraPending
-        cameraPending = null
-        if (ok && uri != null) attachments = attachments + uri
-    }
+    // Photos are taken in the app's own viewfinder now; the OS camera intent
+    // sent people into another app's UI (and sometimes came back cancelled).
+    var cameraOpen by remember { mutableStateOf(false) }
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent(),
     ) { uri -> if (uri != null) attachments = attachments + uri }
@@ -347,7 +337,21 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                     ApiClient.get<DataList<ChatMessage>>("/api/chat/messages?room_id=$roomId").data
                 }
             }
-            result.onSuccess { messages = it }.onFailure {
+            result.onSuccess { fetched ->
+                // Sealed DM bodies open here; rows this device cannot open
+                // (locked vault, peer re-enrolled) show the placeholder
+                // instead of ciphertext. Rooms stay plaintext in this phase.
+                messages = if (isDm) {
+                    @Suppress("UNCHECKED_CAST")
+                    (fetched as List<DmMessage>).map { m ->
+                        if (m.isDeleted) m
+                        else m.copy(content = E2eeManager.decryptDmText(peerId!!, m.content))
+                    }
+                } else {
+                    @Suppress("UNCHECKED_CAST")
+                    fetched as List<ChatMessage>
+                }
+            }.onFailure {
                 messages = emptyList()
                 error = it.message ?: "Could not load this conversation."
             }
@@ -355,6 +359,14 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
     }
 
     LaunchedEffect(roomId, peerId) { load() }
+
+    // The peer's enrollment state drives the header hint. Cached after first
+    // fetch inside the manager, so polling does not re-request it.
+    val peerEnrolled = remember(peerId) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(peerId) {
+        if (peerId == null) return@LaunchedEffect
+        peerEnrolled.value = E2eeManager.peerPublicKey(peerId) != null
+    }
 
     // Polling floor: keeps working even if the realtime socket drops.
     LaunchedEffect(roomId, peerId) {
@@ -412,7 +424,26 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                         .clickable(onClick = onBack)
                         .padding(horizontal = 14.dp, vertical = 7.dp),
                 ) {
-                    Text("‹  Back", style = MaterialTheme.typography.labelMedium, color = Palette.Plum)
+                    Text("â€¹  Back", style = MaterialTheme.typography.labelMedium, color = Palette.Plum)
+                }
+            }
+            if (isDm && peerEnrolled.value != null) {
+                // One honest line under the back chip: what is protected and
+                // what is not, instead of a lock icon carrying all the nuance.
+                item {
+                    Text(
+                        text = when {
+                            peerEnrolled.value == true && E2eeManager.state == E2eeManager.State.UNLOCKED ->
+                                "🔒 End-to-end encrypted"
+                            peerEnrolled.value == true ->
+                                "🔒 Encrypted — unlock encryption in Settings › Privacy to read and reply sealed"
+                            else ->
+                                "Not encrypted — they haven't turned on encryption yet"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Palette.WarmGray,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                    )
                 }
             }
             error?.let { item { ErrorBanner(it) } }
@@ -422,7 +453,7 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
             } else if (list.isEmpty()) {
                 item {
                     EmptyState(
-                        icon = "🌱",
+                        icon = "ðŸŒ±",
                         title = "No messages yet",
                         description = "Write something kind. Someone will read it.",
                     )
@@ -491,9 +522,7 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                     .size(42.dp)
                     .clip(CircleShape)
                     .clickable(enabled = !sending && !uploading) {
-                        val uri = newCameraUri()
-                        cameraPending = uri
-                        cameraLauncher.launch(uri)
+                        cameraOpen = true
                     },
                 contentAlignment = Alignment.Center,
             ) {
@@ -529,7 +558,7 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it.take(10000) },
-                placeholder = { Text("Message…", color = Palette.WarmGray) },
+                placeholder = { Text("Messageâ€¦", color = Palette.WarmGray) },
                 modifier = Modifier.weight(1f),
                 maxLines = 4,
                 // Without these the field grows the row and the whole composer
@@ -556,8 +585,16 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                     scope.launch {
                         runCatching {
                             val paths = uploadPending()
+                            // DMs are sealed with the pair key before they
+                            // leave; a peer who has not enrolled sends
+                            // plaintext (the hint in the header says so).
+                            val wire = if (isDm) {
+                                E2eeManager.encryptDmText(peerId!!, text) ?: text
+                            } else {
+                                text
+                            }
                             val body = buildJsonObject {
-                                put("content", JsonPrimitive(text))
+                                put("content", JsonPrimitive(wire))
                                 put(
                                     "media_paths",
                                     JsonArray(paths.map { JsonPrimitive(it) }),
@@ -627,6 +664,16 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
 
     viewerImage?.let { url ->
         ImageViewer(url = url, onDismiss = { viewerImage = null })
+    }
+
+    if (cameraOpen) {
+        CameraCaptureScreen(
+            onClose = { cameraOpen = false },
+            onCaptured = { uri ->
+                cameraOpen = false
+                attachments = attachments + uri
+            },
+        )
     }
 }
 
@@ -844,7 +891,7 @@ private fun ImageViewer(url: String, onDismiss: () -> Unit) {
             }
         } else {
             Text(
-                if (failed) "Photo unavailable" else "Loading…",
+                if (failed) "Photo unavailable" else "Loadingâ€¦",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.7f),
             )
@@ -861,7 +908,7 @@ private fun ImageViewer(url: String, onDismiss: () -> Unit) {
                 .clickable(onClick = onDismiss),
             contentAlignment = Alignment.Center,
         ) {
-            Text("✕", fontSize = 18.sp, color = Color.White)
+            Text("âœ•", fontSize = 18.sp, color = Color.White)
         }
     }
 }
@@ -997,7 +1044,7 @@ private fun PendingThumb(uri: Uri, uploading: Boolean, onRemove: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    "✕",
+                    "âœ•",
                     fontSize = 11.sp,
                     color = Color.White,
                 )
@@ -1017,10 +1064,10 @@ private fun describe(message: Any): String = when (message) {
     is ChatMessage ->
         if (message.isDeleted) "Message deleted"
         else message.content.ifBlank {
-            message.imageUrls.firstOrNull()?.let { "📷 Photo" } ?: ""
+            message.imageUrls.firstOrNull()?.let { "ðŸ“· Photo" } ?: ""
         }
     is DmMessage ->
         if (message.isDeleted) "Message deleted"
-        else message.content.ifBlank { message.imageUrls.firstOrNull()?.let { "📷 Photo" } ?: "" }
+        else message.content.ifBlank { message.imageUrls.firstOrNull()?.let { "ðŸ“· Photo" } ?: "" }
     else -> ""
 }

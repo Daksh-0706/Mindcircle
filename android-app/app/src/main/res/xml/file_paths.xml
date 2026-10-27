@@ -2,9 +2,15 @@
 <!--
     Only a scratch cache for camera captures. Nothing here is worth restoring:
     a photo taken and then abandoned should not survive a reinstall.
+
+    `camera/` holds chat attachments, `stories/` holds story captures. They are
+    separate directories so clearing one never touches the other mid-flow.
 -->
 <paths>
     <cache-path
         name="camera"
         path="camera/" />
+    <cache-path
+        name="stories"
+        path="stories/" />
 </paths>

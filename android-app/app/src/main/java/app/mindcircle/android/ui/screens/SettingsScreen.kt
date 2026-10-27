@@ -75,6 +75,7 @@ import kotlinx.serialization.json.jsonPrimitive
 private object Tint {
     val PlumBg = Color(0xFFEFEAFB); val PlumFg = Color(0xFF6B4A80)
     val GreenBg = Color(0xFFEAF3EA); val GreenFg = Color(0xFF5F7F52)
+    val MintBg = Color(0xFFEAF3EA); val MintFg = Color(0xFF5F7F52)
     val RoseBg = Color(0xFFFBE7EC); val RoseFg = Color(0xFFA34A6B)
     val PeachBg = Color(0xFFFBEEDC); val PeachFg = Color(0xFFD08A3E)
     val PinkBg = Color(0xFFFDF0F4); val PinkFg = Color(0xFFA34A6B)
@@ -196,6 +197,10 @@ fun SettingsScreen(
                     RowSpec("show-online", "Show Online Status", R.drawable.ic_smartphone, RowAction.Toggle,
                         description = "Let others see when you're active.",
                         iconBg = Tint.PlumBg, iconFg = Tint.PlumFg),
+                    RowSpec("encryption", "End-to-End Encryption", R.drawable.ic_lock, RowAction.Chevron,
+                        description = "Your journal and private chats, sealed on your device.",
+                        iconBg = Tint.MintBg, iconFg = Tint.MintFg,
+                        onNavigate = { onNavigate("settings/encryption") }),
                 ),
             ),
             SectionSpec(

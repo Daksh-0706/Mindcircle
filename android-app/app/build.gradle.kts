@@ -167,6 +167,18 @@ dependencies {
 
     // --- Image loading (chat photos, story images, signed URLs) ---
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+
+    // --- In-app camera ---
+    // The OS camera *intent* is unreliable across OEMs: on some devices it
+    // returns a cancelled result, and on others it comes back in its own
+    // review UI that has nothing to do with this app's design. CameraX hosts
+    // the preview inside our own composable instead, so the viewfinder, the
+    // shutter and the result all belong to MindCircle.
+    val cameraxVersion = "1.4.2"
+    implementation("androidx.camera:camera-core:$cameraxVersion")
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
 }
 
 /** Reads an optional override from android-app/local.properties. */
