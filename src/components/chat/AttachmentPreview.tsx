@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, ImageOff, Loader2, Plus, Send, X } from 'lucide-react'
+import { EncryptedImage } from '../e2ee/MediaImage'
 
 type AttachmentPreviewProps = {
   /** Data URLs of the picked images, in send order. */
@@ -245,7 +246,7 @@ export function ImageGrid({
           }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt="" className="h-full w-full object-cover" />
+          <EncryptedImage url={url} alt="" className="h-full w-full object-cover" />
           {/* The extra images behind the badge stay tappable via the lightbox. */}
           {i === 3 && count > 4 && (
             <span className="absolute inset-0 flex items-center justify-center bg-charcoal/60 text-2xl font-bold text-cream">
@@ -341,13 +342,13 @@ export function ImageLightbox({
         </>
       )}
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={urls[index]}
-        alt={`Image ${index + 1} of ${total}`}
-        onClick={(e) => e.stopPropagation()}
-        className="max-h-full max-w-full rounded-2xl object-contain shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
-      />
+      <span onClick={(e) => e.stopPropagation()} className="inline-flex max-h-full max-w-full">
+        <EncryptedImage
+          url={urls[index]}
+          alt={`Image ${index + 1} of ${total}`}
+          className="max-h-full max-w-full rounded-2xl object-contain shadow-[0_8px_40px_rgba(0,0,0,0.45)]"
+        />
+      </span>
     </div>
   )
 }

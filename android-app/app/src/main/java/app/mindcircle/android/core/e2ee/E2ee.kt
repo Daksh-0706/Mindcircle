@@ -52,6 +52,7 @@ object E2ee {
     const val AAD_CONTENT = "mindcircle:content:v1"
     const val AAD_ARK = "mindcircle:ark:v1"
     const val AAD_ACCOUNT = "mindcircle:account:v1"
+    const val AAD_MEDIA = "mindcircle:media:v1"
     const val KDF_ID = "pbkdf2-sha256"
     const val KDF_ITERATIONS = 600_000
 
@@ -126,6 +127,24 @@ object E2ee {
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, iv))
         cipher.updateAAD(utf8(aad))
         return cipher.doFinal(ct)
+    }
+
+    // ── media framing (chat photos) ────────────────────────────────
+
+    /**
+     * Sealed media blob: `iv(12) ‖ ct`. Uploaded as application/octet-stream
+     * with a `.jpg.enc` path; the web client writes the exact same framing.
+     */
+    fun sealBytes(key: ByteArray, plain: ByteArray, aad: String): ByteArray {
+        val (iv, ct) = aeadEncrypt(key, plain, aad)
+        return iv + ct
+    }
+
+    fun openBytes(key: ByteArray, sealed: ByteArray, aad: String): ByteArray? = try {
+        require(sealed.size > 12 + 16)
+        aeadDecrypt(key, sealed.copyOfRange(0, 12), sealed.copyOfRange(12, sealed.size), aad)
+    } catch (_: Exception) {
+        null
     }
 
     // â”€â”€ envelopes (the only wire format) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

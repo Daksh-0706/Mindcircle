@@ -50,12 +50,32 @@ object MediaUploader {
     /**
      * Reads [uri], downscales, re-encodes as JPEG and uploads it.
      *
+     * When [seal] is provided and returns bytes, those bytes go up instead and
+     * the path gains `.enc` — that is the encrypted-media convention both
+     * clients agree on (docs/E2EE.md). A null result falls back to the plain
+     * JPEG upload, so "not enrolled / locked" degrades to the legacy path.
+     *
      * @return the storage path to send as `media_paths`.
      */
-    suspend fun upload(context: Context, uri: Uri, userId: String): String =
+    suspend fun upload(
+        context: Context,
+        uri: Uri,
+        userId: String,
+        seal: (suspend (ByteArray) -> ByteArray?)? = null,
+    ): String =
         withContext(Dispatchers.IO) {
             val jpeg = decodeAndCompress(context, uri)
                 ?: throw IllegalArgumentException("That file could not be read as an image.")
+
+            val sealed = seal?.invoke(jpeg)
+            if (sealed != null) {
+                // Random component: a path must not be guessable from the message id.
+                val path = "$userId/${UUID.randomUUID()}.jpg.enc"
+                Supabase.client.storage.from(BUCKET).upload(path, sealed) {
+                    contentType = ContentType.Application.OctetStream
+                }
+                return@withContext path
+            }
 
             // Random component: a path must not be guessable from the message id.
             val path = "$userId/${UUID.randomUUID()}.jpg"

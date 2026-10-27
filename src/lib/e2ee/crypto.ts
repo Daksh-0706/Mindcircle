@@ -238,3 +238,4 @@ export async function deriveDmKey(shared: Uint8Array, conversationId: string): P
 export const AAD_CONTENT = 'mindcircle:content:v1'
 export const AAD_ARK = 'mindcircle:ark:v1'
 export const AAD_ACCOUNT = 'mindcircle:account:v1'
+export const AAD_MEDIA = 'mindcircle:media:v1'

@@ -102,12 +102,17 @@ decrypt.
 2. **Direct messages (shipped)** — static-static pair key per conversation
    (see *DM pair key* above); message text becomes `mc1:…` on both platforms;
    previews, notifications and the thread view all decrypt client-side.
-   Photos are **not yet** sealed (phase 4). Migration 013 adds a read policy
-   so any signed-in member can fetch *public* identity keys.
-3. **Rooms** — per-room CEK, wrapped to every member's identity key, re-wrapped on join
+   Migration 013 adds a read policy so any signed-in member can fetch
+   *public* identity keys.
+3. **DM photos (shipped)** — the JPEG is sealed with the pair key
+   (`iv ‖ ct`, AAD `mindcircle:media:v1`) and uploaded as
+   `application/octet-stream` with a `.jpg.enc` path; both clients open it on
+   render. A peer who is not enrolled — or a locked vault — sends and shows
+   photos the legacy `.jpg` way, so both ends always agree.
+4. **Rooms** — per-room CEK, wrapped to every member's identity key, re-wrapped on join
    (the ECIES wrap in `crypto.ts` already exists for this).
-4. **Stories / moods / chat photos** — same helpers, one by one. `mood_tag`
-   emoji stays metadata (it renders as an icon in feeds), not encrypted.
+5. **Stories / moods** — same helpers, one by one. `mood_tag` emoji stays
+   metadata (it renders as an icon in feeds), not encrypted.
 
 Each phase ends with both clients able to read everything the other wrote.
 

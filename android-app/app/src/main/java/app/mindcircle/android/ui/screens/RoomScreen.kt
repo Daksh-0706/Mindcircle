@@ -307,15 +307,25 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
         ActivityResultContracts.GetContent(),
     ) { uri -> if (uri != null) attachments = attachments + uri }
 
-    /** Uploads everything queued, returning the storage paths to attach. */
+    /** Uploads everything queued, returning the storage paths to attach.
+     *
+     *  DM photos are sealed with the pair key first (`MediaUploader` marks
+     *  them `.enc`); when there is no key — peer not enrolled or the vault is
+     *  locked — the sealer returns null and the photo goes up the legacy way,
+     *  which is the same fallback the web applies. */
     suspend fun uploadPending(): List<String> {
         if (attachments.isEmpty()) return emptyList()
         uploading = true
         val uid = myUserId ?: Supabase.auth.currentUserOrNull()?.id
             ?: throw IllegalStateException("Your session has expired.")
+        val sealer: (suspend (ByteArray) -> ByteArray?)? = if (isDm) {
+            { data -> E2eeManager.encryptDmMedia(peerId!!, data) }
+        } else {
+            null
+        }
         return try {
             attachments.map { uri ->
-                runCatching { MediaUploader.upload(context, uri, uid) }
+                runCatching { MediaUploader.upload(context, uri, uid, sealer) }
                     .getOrElse { throw it }
             }
         } finally {
@@ -466,6 +476,13 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                     Bubble(
                         message = item,
                         mine = mine,
+                        // Sealed photos open with the pair key; rooms pass null
+                        // and render the legacy way.
+                        mediaDecrypt = if (isDm) {
+                            { bytes -> E2eeManager.decryptDmMedia(peerId!!, bytes) }
+                        } else {
+                            null
+                        },
                         onLongPress = { target ->
                             // Only your own messages can be withdrawn; the API
                             // scopes the delete to the sender, so offering the
@@ -663,7 +680,15 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
     }
 
     viewerImage?.let { url ->
-        ImageViewer(url = url, onDismiss = { viewerImage = null })
+        ImageViewer(
+            url = url,
+            mediaDecrypt = if (isDm) {
+                { data -> E2eeManager.decryptDmMedia(peerId!!, data) }
+            } else {
+                null
+            },
+            onDismiss = { viewerImage = null },
+        )
     }
 
     if (cameraOpen) {
@@ -697,6 +722,7 @@ private fun createdAtOf(message: Any): String? = when (message) {
 private fun Bubble(
     message: Any,
     mine: Boolean,
+    mediaDecrypt: (suspend (ByteArray) -> ByteArray?)?,
     onLongPress: (Any) -> Unit,
     onOpenImage: (String) -> Unit,
 ) {
@@ -734,7 +760,7 @@ private fun Bubble(
             // Photos first, then the caption underneath -- the same order the
             // web renders them in.
             if (hasImages) {
-                CoilImageList(images, onOpenImage)
+                CoilImageList(images, onOpenImage, mediaDecrypt)
             }
             if (hasBody) {
                 Text(
@@ -856,14 +882,20 @@ private fun SheetRow(icon: Int, label: String, tint: Color, onClick: () -> Unit)
 
 /** Full-screen photo view, so a tapped attachment is actually readable. */
 @Composable
-private fun ImageViewer(url: String, onDismiss: () -> Unit) {
+private fun ImageViewer(
+    url: String,
+    mediaDecrypt: (suspend (ByteArray) -> ByteArray?)?,
+    onDismiss: () -> Unit,
+) {
     var bytes by remember(url) { mutableStateOf<ByteArray?>(null) }
     var failed by remember(url) { mutableStateOf(false) }
+    val sealed = url.substringBefore('?').endsWith(".enc")
 
     LaunchedEffect(url) {
         bytes = runCatching {
             withContext(Dispatchers.IO) { URL(url).openStream().use { it.readBytes() } }
         }.getOrNull()
+            ?.let { data -> if (sealed && mediaDecrypt != null) mediaDecrypt(data) else data }
         failed = bytes == null
     }
 
@@ -920,12 +952,21 @@ private fun ImageViewer(url: String, onDismiss: () -> Unit) {
  * is a plain fetch: no token juggling here, and nothing is cached past its
  * expiry. Failures show a small "photo unavailable" note rather than an
  * infinite spinner, because the links expire.
+ *
+ * `.enc` paths are sealed media (docs/E2EE.md): the bytes are `iv ‖ ct`, so
+ * [mediaDecrypt] opens them before the decode. A locked vault shows a lock
+ * note instead of failing to decode random ciphertext.
  */
 @Composable
-private fun CoilImageList(urls: List<String>, onOpenImage: (String) -> Unit) {
+private fun CoilImageList(
+    urls: List<String>,
+    onOpenImage: (String) -> Unit,
+    mediaDecrypt: (suspend (ByteArray) -> ByteArray?)?,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         urls.forEach { url ->
-            var state by remember(url) { mutableStateOf<LoadState>(LoadState.Loading) }
+            val sealed = url.substringBefore('?').endsWith(".enc")
+            var state by remember(url) { mutableStateOf(LoadState.Loading) }
             var bytes by remember(url) { mutableStateOf<ByteArray?>(null) }
 
             LaunchedEffect(url) {
@@ -935,7 +976,14 @@ private fun CoilImageList(urls: List<String>, onOpenImage: (String) -> Unit) {
                         URL(url).openStream().use { it.readBytes() }
                     }
                 }.getOrNull()
-                state = if (bytes != null) LoadState.Ready else LoadState.Failed
+                    ?.let { data ->
+                        if (sealed && mediaDecrypt != null) mediaDecrypt(data) else data
+                    }
+                state = when {
+                    bytes != null -> LoadState.Ready
+                    sealed && mediaDecrypt == null -> LoadState.Locked
+                    else -> LoadState.Failed
+                }
             }
 
             Box(
@@ -954,6 +1002,12 @@ private fun CoilImageList(urls: List<String>, onOpenImage: (String) -> Unit) {
 
                     LoadState.Failed -> Text(
                         "Photo unavailable",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Palette.WarmGray,
+                    )
+
+                    LoadState.Locked -> Text(
+                        "🔒 Encrypted — unlock to view",
                         style = MaterialTheme.typography.labelSmall,
                         color = Palette.WarmGray,
                     )
@@ -983,7 +1037,7 @@ private fun CoilImageList(urls: List<String>, onOpenImage: (String) -> Unit) {
     }
 }
 
-private enum class LoadState { Loading, Ready, Failed }
+private enum class LoadState { Loading, Ready, Failed, Locked }
 
 /** A queued attachment, with an X so it can be taken back before sending. */
 @Composable

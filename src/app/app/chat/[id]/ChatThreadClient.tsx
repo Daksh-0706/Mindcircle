@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Skeleton from '../../../../components/ui/Skeleton'
 import { Camera, ChevronLeft, Image as ImageIcon, Loader2, Send, SwitchCamera, X } from 'lucide-react'
@@ -19,11 +19,14 @@ import { initE2ee } from '../../../../lib/e2ee/client'
 import { useE2ee } from '../../../../lib/e2ee/useE2ee'
 import {
   DM_PLACEHOLDER,
+  decryptDmMedia,
   decryptDmText,
+  encryptDmMedia,
   encryptDmText,
   fetchPeerPublicKeys,
   isEnvelope,
 } from '../../../../lib/e2ee/chat'
+import { MediaKeysProvider } from '../../../../components/e2ee/MediaImage'
 
 type ChatMessage = {
   id: string
@@ -162,6 +165,7 @@ export default function ChatDetailPage() {
   const [plain, setPlain] = useState<Record<string, string>>({})
   /** The peer's identity public key — null until fetched or when not enrolled. */
   const peerKeyRef = useRef<string | null>(null)
+  const [peerKey, setPeerKey] = useState<string | null>(null)
   /** null = still unknown; drives the header's encryption hint. */
   const [peerEnrolled, setPeerEnrolled] = useState<boolean | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -290,13 +294,31 @@ export default function ChatDetailPage() {
     } = await supabase.auth.getUser()
     if (!user) throw new Error('Please sign in again.')
 
+    // A DM photo is sealed with the pair key before it leaves — exactly the
+    // conditions the receiving side checks, so either both ends treat a photo
+    // as sealed or neither does.
+    const canSeal = isRoom === false && myId !== null && e2ee.status === 'unlocked' && peerKeyRef.current !== null
+
     const results = await Promise.all(
       pending.map(async ({ blob }) => {
         // Random name: the path must not be guessable from message ids.
-        const path = `${user.id}/${crypto.randomUUID()}.jpg`
-        const { error } = await supabase.storage
-          .from('chat-media')
-          .upload(path, blob, { contentType: 'image/jpeg' })
+        let uploadBody: Blob = blob
+        let path = `${user.id}/${crypto.randomUUID()}.jpg`
+        if (canSeal) {
+          const sealed = await encryptDmMedia(
+            myId!,
+            peerId,
+            peerKeyRef.current,
+            new Uint8Array(await blob.arrayBuffer()),
+          )
+          if (sealed) {
+            uploadBody = new Blob([sealed as BlobPart], { type: 'application/octet-stream' })
+            path += '.enc'
+          }
+        }
+        const { error } = await supabase.storage.from('chat-media').upload(path, uploadBody, {
+          contentType: uploadBody.type || 'application/octet-stream',
+        })
         if (error) throw new Error(`Upload failed: ${error.message}`)
         return path
       }),
@@ -325,12 +347,24 @@ export default function ChatDetailPage() {
       const keys = await fetchPeerPublicKeys([peerId])
       if (cancelled) return
       peerKeyRef.current = keys.get(peerId) ?? null
+      setPeerKey(peerKeyRef.current)
       setPeerEnrolled(Boolean(peerKeyRef.current))
     })()
     return () => {
       cancelled = true
     }
   }, [peerId, isRoom])
+
+  /**
+   * The photo decryptor for this thread. `MediaKeysProvider` hands it to every
+   * image below; null (rooms, locked vault, peer not enrolled) means photos
+   * render the legacy way — which is also why the upload side only seals when
+   * the same conditions hold.
+   */
+  const dmMediaDecryptor = useMemo<((bytes: Uint8Array) => Promise<Uint8Array | null>) | null>(() => {
+    if (isRoom !== false || !myId || e2ee.status !== 'unlocked' || !peerKey) return null
+    return (bytes: Uint8Array) => decryptDmMedia(myId, peerId, peerKey, bytes)
+  }, [isRoom, myId, peerId, peerKey, e2ee.status])
 
   /**
    * Open every sealed DM body. Re-runs when the list or the vault status
@@ -621,6 +655,7 @@ export default function ChatDetailPage() {
       {/* Full-screen thread: suppress the app's mobile header and bottom nav
           so the conversation owns the whole viewport. */}
       <AppNav showBack showMobileHeader={false} showBottomNav={false} />
+      <MediaKeysProvider decrypt={dmMediaDecryptor}>
       {/*
         Phone/tablet: the app shell's wrapper only grows with content, so
         `h-full` collapsed to the content height and the whole page scrolled —
@@ -923,6 +958,7 @@ export default function ChatDetailPage() {
         </div>
       )}
       </div>
+      </MediaKeysProvider>
     </>
   )
 }

@@ -20,6 +20,9 @@
 
 import {
   AAD_CONTENT,
+  AAD_MEDIA,
+  aeadDecrypt,
+  aeadEncrypt,
   computeSharedSecret,
   deriveDmKey,
   isEnvelope,
@@ -131,3 +134,45 @@ export async function decryptDmText(
 }
 
 export { isEnvelope } from './crypto'
+
+// ── chat media (photos) ──
+
+/**
+ * Seal one photo for upload: AES-256-GCM over the JPEG bytes, stored as
+ * `iv(12) ‖ ct` and uploaded as `application/octet-stream` with a `.jpg.enc`
+ * path — the suffix is the marker that the bytes need opening before decode.
+ * Returns null when there is no pair key (peer not enrolled / vault locked),
+ * which callers treat as "send the photo the legacy way".
+ */
+export async function encryptDmMedia(
+  myId: string,
+  peerId: string,
+  peerPublic: string | null,
+  bytes: Uint8Array,
+): Promise<Uint8Array | null> {
+  if (!peerPublic || !myId) return null
+  const key = await dmKey(myId, peerId, peerPublic)
+  if (!key) return null
+  const { iv, ct } = await aeadEncrypt(key, bytes, AAD_MEDIA)
+  const out = new Uint8Array(iv.length + ct.length)
+  out.set(iv, 0)
+  out.set(ct, iv.length)
+  return out
+}
+
+/** Open a sealed photo. Null = no key here or the bytes are not for this pair. */
+export async function decryptDmMedia(
+  myId: string,
+  peerId: string,
+  peerPublic: string | null,
+  sealed: Uint8Array,
+): Promise<Uint8Array | null> {
+  if (sealed.length < 12 + 16) return null
+  const key = myId && peerPublic ? await dmKey(myId, peerId, peerPublic) : null
+  if (!key) return null
+  try {
+    return await aeadDecrypt(key, sealed.slice(0, 12), sealed.slice(12), AAD_MEDIA)
+  } catch {
+    return null
+  }
+}

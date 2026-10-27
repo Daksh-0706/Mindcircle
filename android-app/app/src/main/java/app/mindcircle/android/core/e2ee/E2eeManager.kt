@@ -446,4 +446,22 @@ object E2eeManager {
         val k = dmKey(peerId) ?: return DM_PLACEHOLDER
         return E2ee.openText(k.second, stored, E2ee.AAD_CONTENT) ?: DM_PLACEHOLDER
     }
+
+    // ── chat media (photos) ─────────────────────────────────────────
+
+    /**
+     * Seal one photo: `iv ‖ ct` for an `.enc` upload. Null means the peer has
+     * not enrolled or the vault is locked — the caller then uploads plaintext
+     * with a `.jpg` path, exactly the fallback the web uses.
+     */
+    suspend fun encryptDmMedia(peerId: String, bytes: ByteArray): ByteArray? {
+        val k = dmKey(peerId) ?: return null
+        return E2ee.sealBytes(k.second, bytes, E2ee.AAD_MEDIA)
+    }
+
+    /** Open a sealed photo. Null = no key here or these bytes are not for this pair. */
+    suspend fun decryptDmMedia(peerId: String, sealed: ByteArray): ByteArray? {
+        val k = dmKey(peerId) ?: return null
+        return E2ee.openBytes(k.second, sealed, E2ee.AAD_MEDIA)
+    }
 }
