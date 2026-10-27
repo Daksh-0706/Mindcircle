@@ -321,7 +321,7 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
         val sealer: (suspend (ByteArray) -> ByteArray?)? = if (isDm) {
             { data -> E2eeManager.encryptDmMedia(peerId!!, data) }
         } else {
-            null
+            { data -> E2eeManager.encryptRoomMedia(roomId, data) }
         }
         return try {
             attachments.map { uri ->
@@ -486,12 +486,12 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                     Bubble(
                         message = item,
                         mine = mine,
-                        // Sealed photos open with the pair key; rooms pass null
-                        // and render the legacy way.
+                        // Sealed photos open with the pair key (DMs) or the
+                        // room key (rooms); a locked vault shows a lock note.
                         mediaDecrypt = if (isDm) {
                             { bytes -> E2eeManager.decryptDmMedia(peerId!!, bytes) }
                         } else {
-                            null
+                            { bytes -> E2eeManager.decryptRoomMedia(roomId, bytes) }
                         },
                         onLongPress = { target ->
                             // Only your own messages can be withdrawn; the API
@@ -700,7 +700,7 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
             mediaDecrypt = if (isDm) {
                 { data -> E2eeManager.decryptDmMedia(peerId!!, data) }
             } else {
-                null
+                { data -> E2eeManager.decryptRoomMedia(roomId, data) }
             },
             onDismiss = { viewerImage = null },
         )

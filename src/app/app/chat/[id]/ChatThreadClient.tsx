@@ -21,9 +21,11 @@ import {
   DM_PLACEHOLDER,
   decryptDmMedia,
   decryptDmText,
+  decryptRoomMedia,
   decryptRoomText,
   encryptDmMedia,
   encryptDmText,
+  encryptRoomMedia,
   encryptRoomText,
   fetchPeerPublicKeys,
   isEnvelope,
@@ -297,27 +299,25 @@ export default function ChatDetailPage() {
     } = await supabase.auth.getUser()
     if (!user) throw new Error('Please sign in again.')
 
-    // A DM photo is sealed with the pair key before it leaves — exactly the
-    // conditions the receiving side checks, so either both ends treat a photo
-    // as sealed or neither does.
-    const canSeal = isRoom === false && myId !== null && e2ee.status === 'unlocked' && peerKeyRef.current !== null
-
+    // Every photo decides on its own: the helpers return null when there is no
+    // usable key (locked vault / unenrolled peer / no room key yet), and the
+    // upload then goes up the legacy .jpg way — so both ends always agree on
+    // which photos are sealed.
     const results = await Promise.all(
       pending.map(async ({ blob }) => {
         // Random name: the path must not be guessable from message ids.
         let uploadBody: Blob = blob
         let path = `${user.id}/${crypto.randomUUID()}.jpg`
-        if (canSeal) {
-          const sealed = await encryptDmMedia(
-            myId!,
-            peerId,
-            peerKeyRef.current,
-            new Uint8Array(await blob.arrayBuffer()),
-          )
-          if (sealed) {
-            uploadBody = new Blob([sealed as BlobPart], { type: 'application/octet-stream' })
-            path += '.enc'
-          }
+        const raw = new Uint8Array(await blob.arrayBuffer())
+        const sealed =
+          isRoom === true
+            ? await encryptRoomMedia(peerId, raw)
+            : isRoom === false
+              ? await encryptDmMedia(myId!, peerId, peerKeyRef.current, raw)
+              : null
+        if (sealed) {
+          uploadBody = new Blob([sealed as BlobPart], { type: 'application/octet-stream' })
+          path += '.enc'
         }
         const { error } = await supabase.storage.from('chat-media').upload(path, uploadBody, {
           contentType: uploadBody.type || 'application/octet-stream',
@@ -360,12 +360,14 @@ export default function ChatDetailPage() {
 
   /**
    * The photo decryptor for this thread. `MediaKeysProvider` hands it to every
-   * image below; null (rooms, locked vault, peer not enrolled) means photos
-   * render the legacy way — which is also why the upload side only seals when
-   * the same conditions hold.
+   * image below; null (locked vault, unenrolled peer, no room key) means
+   * photos render the legacy way — which is also why the upload side only
+   * seals when the same conditions hold.
    */
   const dmMediaDecryptor = useMemo<((bytes: Uint8Array) => Promise<Uint8Array | null>) | null>(() => {
-    if (isRoom !== false || !myId || e2ee.status !== 'unlocked' || !peerKey) return null
+    if (isRoom === null || e2ee.status !== 'unlocked') return null
+    if (isRoom) return (bytes: Uint8Array) => decryptRoomMedia(peerId, bytes)
+    if (!myId || !peerKey) return null
     return (bytes: Uint8Array) => decryptDmMedia(myId, peerId, peerKey, bytes)
   }, [isRoom, myId, peerId, peerKey, e2ee.status])
 

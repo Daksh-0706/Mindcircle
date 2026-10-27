@@ -1,8 +1,7 @@
 # MindCircle End-to-End Encryption (E2EE)
 
-Status: **Phases 1–4 shipped for text and DM photos: journal, direct
-messages, chat photos, rooms.** Stories and room photos still plaintext —
-see the phase plan.
+Status: **Shipped: journal, direct messages, chat photos (DMs + rooms),
+rooms.** Stories still plaintext — see the phase plan.
 Everything below is the contract both clients (web + Android) implement, so
 read it before touching either crypto module.
 
@@ -112,11 +111,12 @@ decrypt.
    previews, notifications and the thread view all decrypt client-side.
    Migration 013 adds a read policy so any signed-in member can fetch
    *public* identity keys.
-3. **DM photos (shipped)** — the JPEG is sealed with the pair key
-   (`iv ‖ ct`, AAD `mindcircle:media:v1`) and uploaded as
-   `application/octet-stream` with a `.jpg.enc` path; both clients open it on
-   render. A peer who is not enrolled — or a locked vault — sends and shows
-   photos the legacy `.jpg` way, so both ends always agree.
+3. **DM + room photos (shipped)** — the JPEG is sealed with the pair key (DMs)
+   or the room key (rooms) (`iv ‖ ct`, AAD `mindcircle:media:v1`) and uploaded
+   as `application/octet-stream` with a `.jpg.enc` path; both clients open it
+   on render. With no usable key — unenrolled peer, locked vault, no room key
+   yet — the photo is sent and shown the legacy `.jpg` way, so both ends
+   always agree.
 4. **Rooms (shipped)** — the room's content key is 32 random bytes, wrapped
    with ECIES to every member's identity public key and stored in
    `e2ee_conversation_keys` (`room:<uuid>` is both the row key and the wrap
@@ -129,8 +129,11 @@ decrypt.
    displaced key show the placeholder. An ECIES known-answer envelope minted
    on the web is pinned in BOTH self-tests, proving the platforms share one
    wrap format.
-5. **Stories / room photos** — same helpers, one by one. `mood_tag` emoji
-   stays metadata (it renders as an icon in feeds), not encrypted.
+5. **Stories** — needs a product call first: story photos live in the public
+   `story-media` bucket by design, and late-joining connections would not see
+   stories sealed before they connected (same wrap semantics as rooms).
+   `mood_tag` emoji stays metadata (it renders as an icon in feeds), not
+   encrypted.
 
 Each phase ends with both clients able to read everything the other wrote.
 

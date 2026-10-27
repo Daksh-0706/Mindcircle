@@ -299,3 +299,30 @@ export async function decryptDmMedia(
     return null
   }
 }
+
+/**
+ * Rooms seal photos with the room key — same `.enc` convention as DMs. Null
+ * when no key could be established (locked vault), which callers treat as
+ * "upload the photo the legacy way".
+ */
+export async function encryptRoomMedia(roomId: string, bytes: Uint8Array): Promise<Uint8Array | null> {
+  const key = await ensureRoomKey(roomId)
+  if (!key) return null
+  const { iv, ct } = await aeadEncrypt(key, bytes, AAD_MEDIA)
+  const out = new Uint8Array(iv.length + ct.length)
+  out.set(iv, 0)
+  out.set(ct, iv.length)
+  return out
+}
+
+/** Open a room photo. Null = no key here or the bytes do not belong together. */
+export async function decryptRoomMedia(roomId: string, sealed: Uint8Array): Promise<Uint8Array | null> {
+  if (sealed.length < 12 + 16) return null
+  const key = await ensureRoomKey(roomId)
+  if (!key) return null
+  try {
+    return await aeadDecrypt(key, sealed.slice(0, 12), sealed.slice(12), AAD_MEDIA)
+  } catch {
+    return null
+  }
+}

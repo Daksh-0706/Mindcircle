@@ -574,4 +574,19 @@ object E2eeManager {
         val cek = ensureRoomKey(roomId) ?: return DM_PLACEHOLDER
         return E2ee.openText(cek, stored, E2ee.AAD_CONTENT) ?: DM_PLACEHOLDER
     }
+
+    /**
+     * Room photos ride the room key with the same `.enc` convention as DMs.
+     * Null = no key could be established (locked vault) → legacy upload.
+     */
+    suspend fun encryptRoomMedia(roomId: String, bytes: ByteArray): ByteArray? {
+        val cek = ensureRoomKey(roomId) ?: return null
+        return E2ee.sealBytes(cek, bytes, E2ee.AAD_MEDIA)
+    }
+
+    /** Open a room photo. Null = no key here or the bytes do not belong together. */
+    suspend fun decryptRoomMedia(roomId: String, sealed: ByteArray): ByteArray? {
+        val cek = ensureRoomKey(roomId) ?: return null
+        return E2ee.openBytes(cek, sealed, E2ee.AAD_MEDIA)
+    }
 }
