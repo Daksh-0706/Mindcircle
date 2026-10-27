@@ -371,7 +371,7 @@ export default function ConnectPage() {
       const res = await fetch('/api/stories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: '📷 A moment from my day', media_url: urlData.publicUrl, mood_emoji: null }), // 📷 has no Noto asset; fallback glyph is fine
+        body: JSON.stringify({ content: '📷 A moment from my day', media_url: urlData.publicUrl, mood_emoji: '📷' }),
       })
       if (!res.ok) {
         const json = await res.json().catch(() => null)

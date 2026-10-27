@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react'
 import { AppNav } from '../../../components/layout/AppNavContext'
 import Skeleton from '../../../components/ui/Skeleton'
 import EmptyState from '../../../components/ui/EmptyState'
-import { Lock, Plus, Search, Send, ChevronRight, Leaf, Heart, Sun, Star, Sparkle, Flower2 } from 'lucide-react'
+import { Lock, Plus, Search, Send, ChevronRight, Leaf, Heart, Sun, Star, Sparkle, Flower2, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import MoodPicker from '../../../components/ui/MoodPicker'
+import E2eeGate from '../../../components/e2ee/E2eeGate'
+import { useE2ee } from '../../../lib/e2ee/useE2ee'
 import { MOOD_EMOJIS } from '../../../lib/constants'
 import { formatShortDate, formatTime } from '../../../lib/dates'
 
@@ -23,6 +25,8 @@ type JournalEntry = {
   content: string
   mood_tag?: string | null
   created_at: string
+  /** Set when the sealed envelope could not be opened on this device. */
+  unreadable?: boolean
 }
 
 const PROMPT_CHIPS = [
@@ -62,6 +66,7 @@ function titleOf(content: string, max = 52) {
 }
 
 export default function JournalPage() {
+  const e2ee = useE2ee()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [mood, setMood] = useState<string | null>(null)
@@ -71,6 +76,11 @@ export default function JournalPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  // Rows still stored as plaintext from before E2EE existed. They are readable
+  // here, and one button seals them in place — the banner disappears when the
+  // count hits zero.
+  const [legacyCount, setLegacyCount] = useState(0)
+  const [migrating, setMigrating] = useState(false)
 
   const loadEntries = () => {
     fetch('/api/journal')
@@ -78,14 +88,58 @@ export default function JournalPage() {
         if (!res.ok) throw new Error('fetch failed')
         return res.json()
       })
-      .then((json) => setEntries((json.data ?? []) as JournalEntry[]))
+      .then(async (json) => {
+        const raw = (json.data ?? []) as JournalEntry[]
+        let legacy = 0
+        const opened = await Promise.all(
+          raw.map(async (entry) => {
+            if (!entry.content.startsWith('mc1:')) {
+              legacy += 1
+              return entry
+            }
+            try {
+              return { ...entry, content: await e2ee.decrypt(entry.content) }
+            } catch {
+              return { ...entry, content: '', unreadable: true }
+            }
+          }),
+        )
+        setLegacyCount(legacy)
+        setEntries(opened)
+      })
       .catch(() => undefined)
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     loadEntries()
+    // The key material never changes while this page is open, so the effect
+    // only needs to run on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /** Seal legacy plaintext rows in place, one PATCH each. */
+  const migrateLegacy = async () => {
+    if (migrating) return
+    setMigrating(true)
+    setError('')
+    try {
+      for (const entry of entries.filter((e) => !e.unreadable && !e.content.startsWith('mc1:'))) {
+        const sealed = await e2ee.encrypt(entry.content)
+        const res = await fetch(`/api/journal/${entry.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: sealed }),
+        })
+        if (!res.ok) throw new Error('One entry could not be re-encrypted. Try again.')
+      }
+      loadEntries()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong.')
+    } finally {
+      setMigrating(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!content.trim() || saving) return
@@ -93,10 +147,12 @@ export default function JournalPage() {
     setError('')
     const fullContent = title.trim() ? `${title.trim()}\n\n${content}` : content
     try {
+      // Sealed on this device first — the server only ever receives ciphertext.
+      const sealed = await e2ee.encrypt(fullContent)
       const res = await fetch('/api/journal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: fullContent, mood_tag: mood }),
+        body: JSON.stringify({ content: sealed, mood_tag: mood }),
       })
       if (!res.ok) throw new Error('Could not save your entry. Please try again.')
       setTitle('')
@@ -119,6 +175,7 @@ export default function JournalPage() {
   return (
     <>
       <AppNav title="Journal" />
+      <E2eeGate>
       <div className="page-enter space-y-6 pb-8">
         {/* ── Hero: Private Journal + book illustration ──────────── */}
         <section
@@ -156,8 +213,27 @@ export default function JournalPage() {
             <span className="mt-5 inline-flex items-center gap-2.5 rounded-full bg-[#EAF3EA]/90 px-5 py-2.5 text-[14px] font-semibold text-[#3E7A52] backdrop-blur-sm">
               <Lock size={15} /> Only you can see this
             </span>
+            <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#EFEAFB]/90 px-4 py-1.5 text-[12px] font-semibold text-plum">
+              <ShieldCheck size={13} /> End-to-end encrypted on your device
+            </span>
           </div>
         </section>
+
+        {/* ── Legacy migration: rows written before E2EE ─────────── */}
+        {legacyCount > 0 && (
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-warm-gray-lighter bg-[#FBEEDC]/70 px-5 py-4">
+            <p className="text-[14px] leading-6 text-[#7A4A1E]">
+              {legacyCount} older {legacyCount === 1 ? 'entry was' : 'entries were'} written before encryption. They are still readable — seal them now so they are encrypted too.
+            </p>
+            <button
+              onClick={migrateLegacy}
+              disabled={migrating}
+              className="rounded-full bg-plum px-5 py-2.5 text-[13px] font-semibold text-white disabled:opacity-50"
+            >
+              {migrating ? 'Encrypting…' : 'Encrypt now'}
+            </button>
+          </section>
+        )}
 
         {/* ── Editor card with soft background ───────────────────── */}
         <section className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter bg-white shadow-[0px_4px_16px_#4A2C5E08]">
@@ -311,8 +387,17 @@ export default function JournalPage() {
                   >
                     <span className="w-16 shrink-0 text-[13px] font-bold text-[#80698A]">{dayLabel(entry.created_at)}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-base font-bold text-plum">{titleOf(entry.content)}</p>
-                      <p className="mt-0.5 truncate text-[13px] text-charcoal/90">{excerpt(entry.content)}</p>
+                      {entry.unreadable ? (
+                        <>
+                          <p className="text-base font-bold text-plum">🔒 Encrypted entry</p>
+                          <p className="mt-0.5 truncate text-[13px] text-charcoal/70">Needs the device that holds this account&apos;s key.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-base font-bold text-plum">{titleOf(entry.content)}</p>
+                          <p className="mt-0.5 truncate text-[13px] text-charcoal/90">{excerpt(entry.content)}</p>
+                        </>
+                      )}
                     </div>
                     <div className="flex shrink-0 items-center gap-4">
                       {entry.mood_tag && (
@@ -334,6 +419,7 @@ export default function JournalPage() {
           )}
         </section>
       </div>
+      </E2eeGate>
     </>
   )
 }

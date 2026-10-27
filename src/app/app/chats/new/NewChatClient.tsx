@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MessageCircle, Search, UserPlus } from 'lucide-react'
@@ -8,6 +8,10 @@ import { AppNav } from '../../../../components/layout/AppNavContext'
 import Skeleton from '../../../../components/ui/Skeleton'
 import EmptyState from '../../../../components/ui/EmptyState'
 import NotoEmoji from '../../../../components/ui/NotoEmoji'
+import { createClient } from '../../../../lib/supabase/client'
+import { initE2ee } from '../../../../lib/e2ee/client'
+import { useE2ee } from '../../../../lib/e2ee/useE2ee'
+import { DM_PLACEHOLDER, decryptDmText, fetchPeerPublicKeys, isEnvelope } from '../../../../lib/e2ee/chat'
 
 
 type Connection = {
@@ -56,6 +60,18 @@ export default function NewChatClient() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [working, setWorking] = useState<string | null>(null)
+  const e2ee = useE2ee()
+  const [myId, setMyId] = useState<string | null>(null)
+  const [plain, setPlain] = useState<Record<string, string>>({})
+  const peerKeysRef = useRef<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    void initE2ee()
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setMyId(data.user?.id ?? null))
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -76,6 +92,31 @@ export default function NewChatClient() {
       active = false
     }
   }, [])
+
+  /** Open the sealed previews, same as the Chats list does. */
+  useEffect(() => {
+    if (!myId || threads.length === 0) return
+    let cancelled = false
+    const run = async () => {
+      const keys = await fetchPeerPublicKeys(threads.map((t) => t.participant_id))
+      if (cancelled) return
+      peerKeysRef.current = keys
+      const next: Record<string, string> = {}
+      for (const t of threads) {
+        next[t.participant_id] = await decryptDmText(
+          myId,
+          t.participant_id,
+          keys.get(t.participant_id) ?? null,
+          t.last_message,
+        )
+      }
+      if (!cancelled) setPlain(next)
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [threads, myId, e2ee.status])
 
   /** Accepts an incoming request and refreshes both lists. */
   const accept = async (peerId: string) => {
@@ -102,8 +143,11 @@ export default function NewChatClient() {
 
   const q = query.trim().toLowerCase()
   const visibleThreads = useMemo(
-    () => threads.filter((t) => !q || t.last_message.toLowerCase().includes(q)),
-    [threads, q],
+    () =>
+      threads.filter(
+        (t) => !q || (plain[t.participant_id] ?? t.last_message).toLowerCase().includes(q),
+      ),
+    [threads, q, plain],
   )
   // Only accepted connections are messageable; pending ones are shown with a
   // hint so the other person knows a request is waiting for them.
@@ -184,7 +228,9 @@ export default function NewChatClient() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[14px] text-charcoal/80">
-                      {thread.last_message || 'No messages yet'}
+                      {isEnvelope(thread.last_message)
+                        ? plain[thread.participant_id] ?? DM_PLACEHOLDER
+                        : thread.last_message || 'No messages yet'}
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-3">

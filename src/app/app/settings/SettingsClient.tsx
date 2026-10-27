@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   Bell, ChevronRight, Eye, HelpCircle, Info, LifeBuoy, Lock, Mail,
-  Moon, Shield, Smartphone, Sparkles, Sun, User,
+  Moon, Shield, ShieldCheck, Smartphone, Sparkles, Sun, User,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '../../../lib/utils'
@@ -60,6 +60,16 @@ const settingsSections: SettingsSection[] = [
     items: [
       { id: 'private-account', label: 'Private Account', icon: Eye, action: 'toggle', description: 'Only approved followers can see your content.', iconBg: 'bg-[#FBEEDC]', iconColor: 'text-[#D08A3E]' },
       { id: 'show-online', label: 'Show Online Status', icon: Smartphone, action: 'toggle', description: "Let others see when you're active.", iconBg: 'bg-[#EFEAFB]', iconColor: 'text-[#6B4A80]' },
+      {
+        id: 'encryption',
+        label: 'End-to-End Encryption',
+        icon: ShieldCheck,
+        action: 'chevron',
+        href: '/app/settings/encryption',
+        description: 'Your journal and private chats, sealed on your device.',
+        iconBg: 'bg-[#EAF3EA]',
+        iconColor: 'text-[#5F7F52]',
+      },
     ],
   },
   {

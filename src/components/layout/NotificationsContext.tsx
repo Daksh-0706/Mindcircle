@@ -10,6 +10,8 @@ import {
   useState,
 } from 'react'
 import { readMyRequests, rememberMyRequests } from '@/lib/my-requests'
+import { createClient } from '@/lib/supabase/client'
+import { decryptDmText, fetchPeerPublicKeys } from '@/lib/e2ee/chat'
 
 export type NotificationKind = 'resource' | 'achievement' | 'reminder' | 'message' | 'system'
 
@@ -58,6 +60,45 @@ type DmThread = {
 }
 
 const STORAGE_KEY = 'mindcircle:notifications'
+
+/** My user id, resolved once — DM previews need it to derive the pair key. */
+let myIdCache: string | null | undefined
+async function getMyIdCached(): Promise<string | null> {
+  if (myIdCache !== undefined) return myIdCache
+  try {
+    const { data } = await createClient().auth.getUser()
+    myIdCache = data.user?.id ?? null
+  } catch {
+    myIdCache = null
+  }
+  return myIdCache
+}
+
+/**
+ * Sealed previews become words here: each poll decrypts the newest message per
+ * thread (the pair key is cached after the first derivation). When the vault
+ * is locked the body degrades to the placeholder rather than ciphertext.
+ */
+async function decryptThreadBodies(rows: DmThread[]): Promise<DmThread[]> {
+  const sealed = rows.filter(
+    (t) => typeof t.last_message === 'string' && t.last_message.startsWith('mc1:'),
+  )
+  if (sealed.length === 0) return rows
+  const myId = await getMyIdCached()
+  if (!myId) return rows
+  const keys = await fetchPeerPublicKeys(sealed.map((t) => t.participant_id))
+  const out = [...rows]
+  for (let i = 0; i < out.length; i++) {
+    const row = out[i]
+    if (!sealed.includes(row)) continue
+    const key = keys.get(row.participant_id) ?? null
+    out[i] = {
+      ...row,
+      last_message: await decryptDmText(myId, row.participant_id, key, row.last_message),
+    }
+  }
+  return out
+}
 
 /**
  * A single reminder per calendar day. The id is date-stamped, so the list
@@ -232,6 +273,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
           : null
         if (cancelled) return
 
+        const dmRows = dmJson?.data ? await decryptThreadBodies(dmJson.data) : []
+
         // `null` (rather than `[]`) when the call failed, so a blip cannot be
         // mistaken for "no requests anymore" and wipe the bell.
         const rows = connJson ? (connJson.data ?? []) : null
@@ -250,7 +293,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         const acceptedByThem = (rows ?? []).filter(
           (c) => c.status === 'accepted' && c.connection_id !== undefined && mine.has(c.connection_id),
         )
-        const dmFromPeer = (dmJson?.data ?? []).filter(
+        const dmFromPeer = dmRows.filter(
           (t) => t.from_peer && t.participant_id && t.last_at,
         )
 

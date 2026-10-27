@@ -7,6 +7,8 @@ import Skeleton from '@/components/ui/Skeleton'
 import { ArrowLeft, Clock, FileText } from 'lucide-react'
 import Link from 'next/link'
 import NotoEmoji from '@/components/ui/NotoEmoji'
+import E2eeGate from '@/components/e2ee/E2eeGate'
+import { useE2ee } from '@/lib/e2ee/useE2ee'
 import { MOOD_EMOJIS } from '@/lib/constants'
 import { formatShortDate, formatTime } from '@/lib/dates'
 
@@ -41,6 +43,7 @@ function dayLabel(iso: string) {
 }
 
 export default function EntryClient({ id }: { id: string }) {
+  const e2ee = useE2ee()
   const [entry, setEntry] = useState<JournalEntry | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -70,10 +73,20 @@ export default function EntryClient({ id }: { id: string }) {
         const json = await res.json()
         if (cancelled) return
         const data = json?.data
-        const loaded = Array.isArray(data) ? data[0] : data
+        let loaded = Array.isArray(data) ? data[0] : data
         if (!loaded || typeof loaded.content !== 'string' || !loaded.content.trim()) {
           setError('This entry no longer exists.')
           return
+        }
+        // Sealed rows open here, on the device holding the key. A failure means
+        // this device's key does not match — that message beats a blank page.
+        if (loaded.content.startsWith('mc1:')) {
+          try {
+            loaded = { ...loaded, content: await e2ee.decrypt(loaded.content) }
+          } catch {
+            setError('This entry is end-to-end encrypted and this device does not hold its key.')
+            return
+          }
         }
         setEntry(loaded as JournalEntry)
       } catch {
@@ -87,6 +100,8 @@ export default function EntryClient({ id }: { id: string }) {
     return () => {
       cancelled = true
     }
+    // Key material is stable for the lifetime of the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   const parsed = entry ? splitEntry(entry.content) : null
@@ -99,6 +114,7 @@ export default function EntryClient({ id }: { id: string }) {
   return (
     <>
       <AppNav title="Journal" />
+      <E2eeGate>
       <div className="page-enter space-y-6 pb-8">
         {/* ── Entry card ─────────────────────────────────────────── */}
         <section className="relative overflow-hidden rounded-[24px] border border-warm-gray-lighter bg-white shadow-[0px_4px_16px_#4A2C5E08]">
@@ -192,6 +208,7 @@ export default function EntryClient({ id }: { id: string }) {
           </div>
         </section>
       </div>
+      </E2eeGate>
     </>
   )
 }

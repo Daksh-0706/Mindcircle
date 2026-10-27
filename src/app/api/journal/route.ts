@@ -46,7 +46,9 @@ export async function POST(request: Request) {
   const body = await readJson(request)
   if (!body) return badRequest('Invalid request body.')
 
-  const content = asText(body.content, { min: 1, max: 20000 })
+  // 40k rather than 20k: E2EE content is stored as an `mc1:` envelope, and
+  // base64 inflates a 20k-character entry past the old ceiling.
+  const content = asText(body.content, { min: 1, max: 40_000 })
   if (!content) return badRequest('Entry content is required (max 20,000 characters).')
 
   const mediaUrls = Array.isArray(body.media_urls)

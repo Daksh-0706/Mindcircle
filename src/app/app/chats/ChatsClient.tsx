@@ -1,12 +1,16 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AppNav } from '../../../components/layout/AppNavContext'
 import Skeleton from '../../../components/ui/Skeleton'
 import EmptyState from '../../../components/ui/EmptyState'
 import NotoEmoji from '../../../components/ui/NotoEmoji'
 import { Compass, Heart, LockKeyhole, MessageCircle, Search } from 'lucide-react'
 import { cn } from '../../../lib/utils'
+import { createClient } from '../../../lib/supabase/client'
+import { initE2ee } from '../../../lib/e2ee/client'
+import { useE2ee } from '../../../lib/e2ee/useE2ee'
+import { DM_PLACEHOLDER, decryptDmText, fetchPeerPublicKeys, isEnvelope } from '../../../lib/e2ee/chat'
 
 type DmThread = {
   participant_id: string
@@ -56,6 +60,18 @@ export default function ChatsPage() {
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'people'>('all')
+  const e2ee = useE2ee()
+  const [myId, setMyId] = useState<string | null>(null)
+  const [plain, setPlain] = useState<Record<string, string>>({})
+  const peerKeysRef = useRef<Map<string, string>>(new Map())
+
+  useEffect(() => {
+    void initE2ee()
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setMyId(data.user?.id ?? null))
+      .catch(() => undefined)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -76,16 +92,45 @@ export default function ChatsPage() {
     }
   }, [])
 
+  /**
+   * Open the sealed previews. Previews come from the server as ciphertext
+   * (that is all it has), so the list decrypts them exactly like the thread
+   * does; placeholders appear while the vault is locked and heal on unlock.
+   */
+  useEffect(() => {
+    if (!myId || threads.length === 0) return
+    let cancelled = false
+    const run = async () => {
+      const keys = await fetchPeerPublicKeys(threads.map((t) => t.participant_id))
+      if (cancelled) return
+      peerKeysRef.current = keys
+      const next: Record<string, string> = {}
+      for (const t of threads) {
+        next[t.participant_id] = await decryptDmText(
+          myId,
+          t.participant_id,
+          keys.get(t.participant_id) ?? null,
+          t.last_message,
+        )
+      }
+      if (!cancelled) setPlain(next)
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [threads, myId, e2ee.status])
+
   const q = query.trim().toLowerCase()
   const filteredThreads = useMemo(
     () =>
       threads.filter(
         (t) =>
           !q ||
-          t.last_message.toLowerCase().includes(q) ||
+          (plain[t.participant_id] ?? t.last_message).toLowerCase().includes(q) ||
           (t.alias ?? '').toLowerCase().includes(q),
       ),
-    [threads, q],
+    [threads, q, plain],
   )
   const hasAny = threads.length > 0
   const totalUnread = threads.reduce((sum, t) => sum + t.unread, 0)
@@ -200,7 +245,11 @@ export default function ChatsPage() {
                           <span className="shrink-0 text-[11px] text-warm-gray/80">{timeAgo(thread.last_at)}</span>
                         </span>
                         <span className="mt-0.5 flex items-center justify-end gap-3">
-                          <span className="truncate text-[13px] text-charcoal/70">{thread.last_message || 'No messages yet'}</span>
+                          <span className="truncate text-[13px] text-charcoal/70">
+                            {isEnvelope(thread.last_message)
+                              ? plain[thread.participant_id] ?? DM_PLACEHOLDER
+                              : thread.last_message || 'No messages yet'}
+                          </span>
                           {thread.unread > 0 && (
                             <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#E8506E] px-1.5 text-[11px] font-bold text-white">{thread.unread}</span>
                           )}

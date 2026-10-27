@@ -15,6 +15,15 @@ import {
   ImageLightbox,
 } from '../../../../components/chat/AttachmentPreview'
 import { MessageDetails, MessageMenu } from '../../../../components/chat/MessageMenu'
+import { initE2ee } from '../../../../lib/e2ee/client'
+import { useE2ee } from '../../../../lib/e2ee/useE2ee'
+import {
+  DM_PLACEHOLDER,
+  decryptDmText,
+  encryptDmText,
+  fetchPeerPublicKeys,
+  isEnvelope,
+} from '../../../../lib/e2ee/chat'
 
 type ChatMessage = {
   id: string
@@ -147,6 +156,14 @@ export default function ChatDetailPage() {
   // removed. Kept as state rather than a ref so the sheet renders from it.
   const [menuMessage, setMenuMessage] = useState<ChatMessage | null>(null)
   const [deleting, setDeleting] = useState(false)
+  // ── DM encryption (docs/E2EE.md §chats) ──
+  const e2ee = useE2ee()
+  /** Decrypted body per message id; raw rows stay untouched in `messages`. */
+  const [plain, setPlain] = useState<Record<string, string>>({})
+  /** The peer's identity public key — null until fetched or when not enrolled. */
+  const peerKeyRef = useRef<string | null>(null)
+  /** null = still unknown; drives the header's encryption hint. */
+  const [peerEnrolled, setPeerEnrolled] = useState<boolean | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -295,6 +312,50 @@ export default function ChatDetailPage() {
       .catch(() => undefined)
   }, [])
 
+  // Wake the encryption vault once; its status arrives through `e2ee.status`.
+  useEffect(() => {
+    void initE2ee()
+  }, [])
+
+  // A room needs no keys; a DM needs the peer's identity public key.
+  useEffect(() => {
+    if (isRoom !== false || !peerId) return
+    let cancelled = false
+    void (async () => {
+      const keys = await fetchPeerPublicKeys([peerId])
+      if (cancelled) return
+      peerKeyRef.current = keys.get(peerId) ?? null
+      setPeerEnrolled(Boolean(peerKeyRef.current))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [peerId, isRoom])
+
+  /**
+   * Open every sealed DM body. Re-runs when the list or the vault status
+   * changes, so messages that showed a placeholder while locked turn into
+   * text the moment the user unlocks — no refetch needed.
+   */
+  useEffect(() => {
+    if (isRoom !== false || !myId) return
+    let cancelled = false
+    const run = async () => {
+      const next: Record<string, string> = {}
+      for (const m of messages) {
+        next[m.id] =
+          m.content && isEnvelope(m.content)
+            ? await decryptDmText(myId, peerId, peerKeyRef.current, m.content)
+            : m.content
+      }
+      if (!cancelled) setPlain(next)
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [messages, isRoom, myId, peerId, e2ee.status])
+
   const load = useCallback(async () => {
     if (!peerId) return
     try {
@@ -409,6 +470,19 @@ export default function ChatDetailPage() {
   const backHref = isRoom ? '/app/connect' : '/app/chats'
 
   /**
+   * The one-line encryption state under the peer's name. Says plainly what is
+   * and is not protected instead of relying on a lock icon to carry nuance.
+   */
+  const dmSubtitle =
+    peerEnrolled === null
+      ? ''
+      : peerEnrolled
+        ? e2ee.status === 'unlocked'
+          ? '🔒 End-to-end encrypted'
+          : '🔒 Encrypted — set up encryption to read and reply sealed'
+        : 'Not encrypted — they haven’t turned on encryption yet'
+
+  /**
    * Which text field the outgoing message should take.
    *
    * Sending a photo happens from the preview sheet, so its caption wins while
@@ -454,6 +528,14 @@ export default function ChatDetailPage() {
     try {
       const mediaPaths = pendingImages.length > 0 ? await uploadAttachments(pendingImages) : null
 
+      // DM bodies are sealed with the pair key before they leave the device;
+      // a peer who has not enrolled (or a locked vault) sends plaintext, and
+      // the header hint says so. Rooms stay plaintext in this phase.
+      let wire = content
+      if (!isRoom && content && myId && e2ee.status === 'unlocked' && peerKeyRef.current) {
+        wire = await encryptDmText(myId, peerId, peerKeyRef.current, content)
+      }
+
       const res = isRoom
         ? await fetch('/api/chat/messages', {
             method: 'POST',
@@ -469,7 +551,7 @@ export default function ChatDetailPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               receiver_id: peerId,
-              content,
+              content: wire,
               ...(mediaPaths ? { media_paths: mediaPaths } : {}),
             }),
           })
@@ -573,7 +655,7 @@ export default function ChatDetailPage() {
           <p className="truncate text-[12px] text-warm-gray">
             {isRoom
               ? `Anonymous room${memberCount !== null ? ` · ${memberCount} here` : ''}`
-              : 'Mindcircle user'}
+              : dmSubtitle}
           </p>
         </div>
       </div>
@@ -607,6 +689,10 @@ export default function ChatDetailPage() {
               messages.map((m) => {
                 const mine = myId !== null && m.sender_id === myId
                 const urls = imageUrlsOf(m)
+                // Sealed bodies render from the decrypted map; anything this
+                // device cannot open shows the placeholder, never ciphertext.
+                const body =
+                  m.content && isEnvelope(m.content) ? plain[m.id] ?? DM_PLACEHOLDER : m.content
                 return (
                   <div
                     key={m.id}
@@ -625,8 +711,8 @@ export default function ChatDetailPage() {
                           onOpen={(index) => setLightbox({ urls, index })}
                         />
                       )}
-                      {m.content && (
-                        <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                      {body && (
+                        <p className="whitespace-pre-wrap break-words">{body}</p>
                       )}
                       <p
                         className={
