@@ -348,9 +348,10 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                 }
             }
             result.onSuccess { fetched ->
-                // Sealed DM bodies open here; rows this device cannot open
-                // (locked vault, peer re-enrolled) show the placeholder
-                // instead of ciphertext. Rooms stay plaintext in this phase.
+                // Sealed bodies open here; rows this device cannot open (locked
+                // vault, peer re-enrolled, missing room wrap) show the
+                // placeholder instead of ciphertext. The room key is fetched or
+                // established as part of the first decrypt.
                 messages = if (isDm) {
                     @Suppress("UNCHECKED_CAST")
                     (fetched as List<DmMessage>).map { m ->
@@ -359,7 +360,10 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                     }
                 } else {
                     @Suppress("UNCHECKED_CAST")
-                    fetched as List<ChatMessage>
+                    (fetched as List<ChatMessage>).map { m ->
+                        if (m.isDeleted) m
+                        else m.copy(content = E2eeManager.decryptRoomText(roomId, m.content))
+                    }
                 }
             }.onFailure {
                 messages = emptyList()
@@ -437,18 +441,24 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                     Text("â€¹  Back", style = MaterialTheme.typography.labelMedium, color = Palette.Plum)
                 }
             }
-            if (isDm && peerEnrolled.value != null) {
+            if ((isDm && peerEnrolled.value != null) || (!isDm && E2eeManager.state != E2eeManager.State.UNKNOWN)) {
                 // One honest line under the back chip: what is protected and
                 // what is not, instead of a lock icon carrying all the nuance.
                 item {
                     Text(
                         text = when {
-                            peerEnrolled.value == true && E2eeManager.state == E2eeManager.State.UNLOCKED ->
+                            isDm && peerEnrolled.value == true && E2eeManager.state == E2eeManager.State.UNLOCKED ->
                                 "🔒 End-to-end encrypted"
-                            peerEnrolled.value == true ->
+                            isDm && peerEnrolled.value == true ->
                                 "🔒 Encrypted — unlock encryption in Settings › Privacy to read and reply sealed"
-                            else ->
+                            isDm ->
                                 "Not encrypted — they haven't turned on encryption yet"
+                            E2eeManager.state == E2eeManager.State.UNLOCKED ->
+                                "🔒 End-to-end encrypted"
+                            E2eeManager.state == E2eeManager.State.LOCKED ->
+                                "🔒 Encrypted — unlock encryption in Settings › Privacy to read"
+                            else ->
+                                ""
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = Palette.WarmGray,
@@ -602,13 +612,15 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                     scope.launch {
                         runCatching {
                             val paths = uploadPending()
-                            // DMs are sealed with the pair key before they
-                            // leave; a peer who has not enrolled sends
-                            // plaintext (the hint in the header says so).
+                            // Bodies are sealed before they leave: DMs with the
+                            // pair key, rooms with the room key (a first sender
+                            // establishes it on the fly). A locked vault or an
+                            // unenrolled peer sends plaintext; the hint in the
+                            // header says so.
                             val wire = if (isDm) {
                                 E2eeManager.encryptDmText(peerId!!, text) ?: text
                             } else {
-                                text
+                                E2eeManager.encryptRoomText(roomId, text) ?: text
                             }
                             val body = buildJsonObject {
                                 put("content", JsonPrimitive(wire))
@@ -623,6 +635,9 @@ fun RoomScreen(roomId: String, onBack: () -> Unit, peerId: String? = null) {
                                 if (isDm) "/api/chat/dm" else "/api/chat/messages",
                                 body,
                             )
+                            // Background self-heal: re-wrap the room key to every
+                            // member so late joiners pick it up.
+                            if (!isDm) E2eeManager.refreshRoomWraps(roomId)
                         }.onSuccess {
                             draft = ""
                             attachments = emptyList()

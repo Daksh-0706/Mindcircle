@@ -21,10 +21,13 @@ import {
   DM_PLACEHOLDER,
   decryptDmMedia,
   decryptDmText,
+  decryptRoomText,
   encryptDmMedia,
   encryptDmText,
+  encryptRoomText,
   fetchPeerPublicKeys,
   isEnvelope,
+  refreshRoomWraps,
 } from '../../../../lib/e2ee/chat'
 import { MediaKeysProvider } from '../../../../components/e2ee/MediaImage'
 
@@ -367,19 +370,22 @@ export default function ChatDetailPage() {
   }, [isRoom, myId, peerId, peerKey, e2ee.status])
 
   /**
-   * Open every sealed DM body. Re-runs when the list or the vault status
-   * changes, so messages that showed a placeholder while locked turn into
-   * text the moment the user unlocks — no refetch needed.
+   * Open every sealed message body — DM rows with the pair key, room rows with
+   * the room key. Re-runs when the list or the vault status changes, so
+   * messages that showed a placeholder while locked turn into text the moment
+   * the user unlocks — no refetch needed.
    */
   useEffect(() => {
-    if (isRoom !== false || !myId) return
+    if (isRoom === null || !myId) return
     let cancelled = false
     const run = async () => {
       const next: Record<string, string> = {}
       for (const m of messages) {
         next[m.id] =
           m.content && isEnvelope(m.content)
-            ? await decryptDmText(myId, peerId, peerKeyRef.current, m.content)
+            ? isRoom
+              ? await decryptRoomText(peerId, m.content)
+              : await decryptDmText(myId, peerId, peerKeyRef.current, m.content)
             : m.content
       }
       if (!cancelled) setPlain(next)
@@ -562,12 +568,15 @@ export default function ChatDetailPage() {
     try {
       const mediaPaths = pendingImages.length > 0 ? await uploadAttachments(pendingImages) : null
 
-      // DM bodies are sealed with the pair key before they leave the device;
-      // a peer who has not enrolled (or a locked vault) sends plaintext, and
-      // the header hint says so. Rooms stay plaintext in this phase.
+      // Bodies are sealed before they leave the device: DMs with the pair key,
+      // rooms with the room key (which a first sender establishes on the fly).
+      // A peer who has not enrolled — or a locked vault — sends plaintext, and
+      // the header hint says so.
       let wire = content
-      if (!isRoom && content && myId && e2ee.status === 'unlocked' && peerKeyRef.current) {
-        wire = await encryptDmText(myId, peerId, peerKeyRef.current, content)
+      if (content && myId && e2ee.status === 'unlocked') {
+        wire = isRoom
+          ? await encryptRoomText(peerId, content)
+          : await encryptDmText(myId, peerId, peerKeyRef.current, content)
       }
 
       const res = isRoom
@@ -576,7 +585,7 @@ export default function ChatDetailPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               room_id: peerId,
-              content,
+              content: wire,
               ...(mediaPaths ? { media_paths: mediaPaths } : {}),
             }),
           })
@@ -593,6 +602,9 @@ export default function ChatDetailPage() {
         const json = await res.json().catch(() => null)
         throw new Error(json?.error || 'Message could not be sent.')
       }
+      // Background self-heal for rooms: re-wrap the key to every member so a
+      // late joiner (or a displaced wrap) picks it up on the next messages.
+      if (isRoom && e2ee.status === 'unlocked') void refreshRoomWraps(peerId)
       const json = await res.json()
       const saved = (json.data?.[0] ?? null) as ChatMessage | null
       setMessages((prev) =>
@@ -689,7 +701,9 @@ export default function ChatDetailPage() {
           </h1>
           <p className="truncate text-[12px] text-warm-gray">
             {isRoom
-              ? `Anonymous room${memberCount !== null ? ` · ${memberCount} here` : ''}`
+              ? `Anonymous room${memberCount !== null ? ` · ${memberCount} here` : ''}${
+                  e2ee.status === 'unlocked' ? ' · 🔒 Encrypted' : ''
+                }`
               : dmSubtitle}
           </p>
         </div>

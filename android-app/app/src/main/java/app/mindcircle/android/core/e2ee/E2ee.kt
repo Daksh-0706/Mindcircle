@@ -264,6 +264,46 @@ object E2ee {
         return toFixed32(BigInteger(1, secret))
     }
 
+    // ── ECIES (room key wraps) ─────────────────────────────────────
+
+    /**
+     * Seal [material] to someone else's identity public key: an ephemeral P-256
+     * pair per wrap, ECDH + HKDF as the KEK (`mindcircle:ck:v1`), the raw
+     * 65-byte ephemeral public point riding along as `epk`. The web twin is
+     * `wrapToPublicKey` in src/lib/e2ee/crypto.ts — the two write identical
+     * envelopes and open each other's.
+     */
+    fun wrapToPublicKey(material: ByteArray, recipientPublicB64u: String, contextId: String): String {
+        val ephemeral = generateIdentityKeyPair()
+        val shared = computeSharedSecret(ephemeral.private, recipientPublicB64u)
+        val kek = hkdfSha256(shared, utf8("mindcircle:ck:v1"))
+        val (iv, ct) = aeadEncrypt(kek, material, "mindcircle:ck:v1:$contextId")
+        return packEnvelope(
+            iv,
+            ct,
+            mapOf(
+                "t" to "ecies",
+                "epk" to b64u(encodePublicPoint(ephemeral.public)),
+            ),
+        )
+    }
+
+    /** Open a wrap addressed to [identityPrivate]. Null = not for this key. */
+    fun unwrapFromPublicKey(stored: String, identityPrivate: PrivateKey, contextId: String): ByteArray? = try {
+        val env = unpackEnvelope(stored)
+        require(env["t"]?.jsonPrimitive?.content == "ecies")
+        val shared = computeSharedSecret(identityPrivate, env["epk"]!!.jsonPrimitive.content)
+        val kek = hkdfSha256(shared, utf8("mindcircle:ck:v1"))
+        aeadDecrypt(
+            kek,
+            unb64u(env["iv"]!!.jsonPrimitive.content),
+            unb64u(env["ct"]!!.jsonPrimitive.content),
+            "mindcircle:ck:v1:$contextId",
+        )
+    } catch (_: Exception) {
+        null
+    }
+
     // â”€â”€ BIP-39 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /** 16 bytes â†’ 12 words, checksum included, over the shared wordlist. */
@@ -376,6 +416,35 @@ object E2eeSelfTest {
         val cekB = E2ee.deriveDmKey(E2ee.computeSharedSecret(E2ee.importIdentityPrivate(dB), pubAFixed), convFixed)
         check("DM key matches web vector", E2ee.b64u(cekA) == "jiSQGReKAryg5Pl9lxHIrfIoAu66082hTI9O3ZJxCjY")
         check("DM key agrees both ways", cekA.contentEquals(cekB))
+
+        // 7. ECIES round trip (room key wraps): a wrap made here opens with the
+        // recipient's private key, and a different context id is rejected —
+        // the same rules the web's wrapToPublicKey/unwrapFromPublicKey follow.
+        val material = ByteArray(32) { (it * 7 + 3).toByte() }
+        val wrap = E2ee.wrapToPublicKey(material, pubB, "room:00000000-0000-0000-0000-000000000000")
+        check(
+            "ECIES wrap → unwrap",
+            E2ee.unwrapFromPublicKey(wrap, b.private, "room:00000000-0000-0000-0000-000000000000")
+                ?.contentEquals(material) == true,
+        )
+        check(
+            "ECIES rejects foreign context",
+            E2ee.unwrapFromPublicKey(wrap, b.private, "room:11111111-1111-1111-1111-111111111111") == null,
+        )
+        check("ECIES rejects wrong recipient", E2ee.unwrapFromPublicKey(wrap, a.private, "room:00000000-0000-0000-0000-000000000000") == null)
+
+        // 8. A wrap minted on the WEB with the pinned identities opens here —
+        // the two platforms provably share one ECIES wire format.
+        val webEnvelope =
+            "mc1:eyJ2IjoxLCJ0IjoiZWNpZXMiLCJlcGsiOiJCRmpoNXVEenhQQ2M1ZVYtZlREdzlxOGVBa25Odmx5V2djME90UWtkQ2ZLbVVwQWVGcGJYV0llZlpjZUNiYjgyS18zOTByY1pDSERGYXZycVBObU5LMXMiLCJpdiI6IldIY0RZdVJWUnpNWlRnb2oiLCJjdCI6ImFTM2RaalFvbDg2TE5OekduYnJXYWRXZXFtQ21lMFJVY25sM2d5UTNhRDc5WEpMd0dqc3I2UmtzemZUaktJWlMifQ"
+        val dBPriv = E2ee.importIdentityPrivate(dB)
+        val roomCtx = "room:00000000-0000-0000-0000-000000000000"
+        check(
+            "ECIES opens web-made wrap",
+            E2ee.unwrapFromPublicKey(webEnvelope, dBPriv, roomCtx)?.contentEquals(
+                E2ee.unb64u("AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dw"),
+            ) == true,
+        )
 
         return results
     }

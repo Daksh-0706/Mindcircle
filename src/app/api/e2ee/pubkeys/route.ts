@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     .filter(Boolean)
 
   if (ids.length === 0) return badRequest('No ids requested.')
-  if (ids.length > 20) return badRequest('Too many ids.')
+  if (ids.length > 60) return badRequest('Too many ids.')
   for (const id of ids) {
     if (!asUuid(id)) return badRequest('Invalid id.')
   }

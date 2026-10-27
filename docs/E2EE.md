@@ -1,7 +1,8 @@
 # MindCircle End-to-End Encryption (E2EE)
 
-Status: **Phase 1 shipped (journal + foundation); Phase 2 shipped (direct
-messages).** Rooms, stories and media still plaintext — see the phase plan.
+Status: **Phases 1–4 shipped for text and DM photos: journal, direct
+messages, chat photos, rooms.** Stories and room photos still plaintext —
+see the phase plan.
 Everything below is the contract both clients (web + Android) implement, so
 read it before touching either crypto module.
 
@@ -41,8 +42,9 @@ Only platform-vetted primitives — no homemade cipher, no novel protocol family
 ARK (account root key, 32 random bytes) ◀──────────────────────────────────────┘
   ├── HKDF(info="mindcircle:journal:v1") ──▶ journal content key
   ├── wraps identity private key (P-256)   └─ identity PUBLIC key is stored plaintext
-  └── HKDF(ECDH with peer, info="mindcircle:dm:v1",
-           salt=conversation id)           └─ DM pair keys (Phase 2)
+  ├── HKDF(ECDH with peer, info="mindcircle:dm:v1",
+  │        salt=conversation id)           └─ DM pair keys (Phase 2)
+  └── random 32 bytes per room ──ECIES to each member──▶ room keys (Phase 3)
 ```
 
 - **ARK** is 32 random bytes generated on the user's first device. It never
@@ -59,6 +61,12 @@ ARK (account root key, 32 random bytes) ◀────────────�
   Both sides derive the same key with **no exchange step** — the public key
   table is all the "distribution" there is. Falls back to plaintext (with a
   visible hint) only when the peer has not enrolled yet.
+- **Room key (Phase 3)** — 32 random bytes per room, wrapped ECIES-style to
+  every member: `KEK = HKDF(ECDH(ephemeral, memberPub), info="mindcircle:ck:v1")`,
+  AAD `"mindcircle:ck:v1:room:<uuid>"`, envelope carries the ephemeral public
+  point as `epk`. Wraps live on `e2ee_conversation_keys`; every send refreshes
+  them so late joiners self-heal. A member without a wrap sees placeholders
+  for history sealed before their wrap landed.
 
 ## Envelope format (the only wire format, both clients agree on it)
 
@@ -109,10 +117,20 @@ decrypt.
    `application/octet-stream` with a `.jpg.enc` path; both clients open it on
    render. A peer who is not enrolled — or a locked vault — sends and shows
    photos the legacy `.jpg` way, so both ends always agree.
-4. **Rooms** — per-room CEK, wrapped to every member's identity key, re-wrapped on join
-   (the ECIES wrap in `crypto.ts` already exists for this).
-5. **Stories / moods** — same helpers, one by one. `mood_tag` emoji stays
-   metadata (it renders as an icon in feeds), not encrypted.
+4. **Rooms (shipped)** — the room's content key is 32 random bytes, wrapped
+   with ECIES to every member's identity public key and stored in
+   `e2ee_conversation_keys` (`room:<uuid>` is both the row key and the wrap
+   context). Whoever sends first creates and distributes the key; every send
+   re-wraps for all members (upsert), so late joiners and displaced wraps
+   self-heal going forward. Migration 014 lets members see their rooms'
+   member ids and write wraps for each other. Convergence note: two people
+   creating the key in the same instant can momentarily diverge — the last
+   wrap wins and the room converges on the next send; messages sealed with a
+   displaced key show the placeholder. An ECIES known-answer envelope minted
+   on the web is pinned in BOTH self-tests, proving the platforms share one
+   wrap format.
+5. **Stories / room photos** — same helpers, one by one. `mood_tag` emoji
+   stays metadata (it renders as an icon in feeds), not encrypted.
 
 Each phase ends with both clients able to read everything the other wrote.
 

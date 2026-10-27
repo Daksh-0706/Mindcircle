@@ -13,7 +13,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import java.math.BigInteger
 import java.security.KeyStore
 import java.security.interfaces.ECPublicKey
@@ -377,6 +380,8 @@ object E2eeManager {
         journalKey = null
         pending = null
         dmCeks.clear()
+        roomCeks.clear()
+        roomKeyMiss.clear()
     }
 
     // ── chats (Phase 2): one key per DM pair, derived without exchange ──
@@ -463,5 +468,110 @@ object E2eeManager {
     suspend fun decryptDmMedia(peerId: String, sealed: ByteArray): ByteArray? {
         val k = dmKey(peerId) ?: return null
         return E2ee.openBytes(k.second, sealed, E2ee.AAD_MEDIA)
+    }
+
+    // ── rooms (Phase 3): random CEK, ECIES-wrapped to every member ──
+
+    @Serializable
+    private data class RoomMembersDto(val data: List<String> = emptyList())
+
+    @Serializable
+    private data class ConvKeyDto(@SerialName("wrapped_key") val wrappedKey: String? = null)
+
+    @Serializable
+    private data class ConvKeyEnvelope(val data: ConvKeyDto? = null)
+
+    @Serializable
+    private data class ConvKeysPostDto(val inserted: Int = 0)
+
+    private val roomCeks = HashMap<String, ByteArray>()
+
+    /** Rooms we could not establish a key for, retried at most every 30s —
+     *  a locked vault or an offline members call must not turn every message
+     *  decrypt into a network attempt. */
+    private val roomKeyMiss = HashMap<String, Long>()
+
+    /**
+     * The room's content key for this member — from my stored wrap, or freshly
+     * created and wrapped to every member when none exists. Null = vault
+     * locked or no wrap could be established; the caller sends plaintext and
+     * the header says so (docs/E2EE.md §rooms).
+     */
+    suspend fun ensureRoomKey(roomId: String): ByteArray? {
+        val priv = identityPrivate ?: return null
+        val convId = "room:$roomId"
+        roomCeks[convId]?.let { return it }
+        roomKeyMiss[convId]?.let { if (android.os.SystemClock.elapsedRealtime() - it < 30_000L) return null }
+        try {
+            val res = ApiClient.get<ConvKeyEnvelope>("/api/e2ee/convkeys?conversation=$convId")
+            val stored = res.data?.wrappedKey
+            if (!stored.isNullOrEmpty()) {
+                E2ee.unwrapFromPublicKey(stored, priv, convId)?.let {
+                    roomCeks[convId] = it
+                    roomKeyMiss.remove(convId)
+                    return it
+                }
+            }
+        } catch (_: Exception) {
+            // No wrap yet — establish one below.
+        }
+        val cek = E2ee.randomBytes(32)
+        return if (distributeRoomKey(roomId, convId, cek)) {
+            roomCeks[convId] = cek
+            roomKeyMiss.remove(convId)
+            cek
+        } else {
+            roomKeyMiss[convId] = android.os.SystemClock.elapsedRealtime()
+            null
+        }
+    }
+
+    /** Wrap the key to every member and store the wraps (upsert, self-healing). */
+    private suspend fun distributeRoomKey(roomId: String, convId: String, cek: ByteArray): Boolean {
+        return try {
+            val members = ApiClient.get<RoomMembersDto>("/api/chat/members?room_id=$roomId")
+                .data.distinct().take(40)
+            if (members.isEmpty()) return false
+            val wraps = buildJsonArray {
+                for (id in members) {
+                    val pub = peerPublicKey(id) ?: continue
+                    add(buildJsonObject {
+                        put("user_id", id)
+                        put("wrapped_key", E2ee.wrapToPublicKey(cek, pub, convId))
+                    })
+                }
+            }
+            if (wraps.isEmpty()) return false
+            ApiClient.post<ConvKeysPostDto>(
+                "/api/e2ee/convkeys",
+                buildJsonObject {
+                    put("conversation", convId)
+                    put("wraps", wraps)
+                },
+            )
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** Re-wrap to all members after a send, so late joiners self-heal. */
+    suspend fun refreshRoomWraps(roomId: String) {
+        val cek = roomCeks["room:$roomId"] ?: return
+        distributeRoomKey(roomId, "room:$roomId", cek)
+    }
+
+    /** Seal one room message. Null → caller sends plaintext. */
+    suspend fun encryptRoomText(roomId: String, plaintext: String): String? {
+        if (plaintext.isEmpty()) return plaintext
+        val cek = ensureRoomKey(roomId) ?: return null
+        return E2ee.sealText(cek, plaintext, E2ee.AAD_CONTENT)
+    }
+
+    /** Legacy passes through; otherwise open or show the placeholder. */
+    suspend fun decryptRoomText(roomId: String, stored: String): String {
+        if (!E2ee.isEnvelope(stored)) return stored
+        val cek = ensureRoomKey(roomId) ?: return DM_PLACEHOLDER
+        return E2ee.openText(cek, stored, E2ee.AAD_CONTENT) ?: DM_PLACEHOLDER
     }
 }

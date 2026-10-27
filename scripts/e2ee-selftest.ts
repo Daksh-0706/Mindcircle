@@ -19,7 +19,9 @@ import {
   pbkdf2Sha256,
   sealText,
   toB64u,
+  unwrapFromPublicKey,
   utf8,
+  wrapToPublicKey,
 } from '../src/lib/e2ee/crypto'
 import { entropyToMnemonic, mnemonicToEntropy, randomEntropy } from '../src/lib/e2ee/mnemonic'
 
@@ -93,6 +95,31 @@ async function main() {
   const cekB = await deriveDmKey(await computeSharedSecret(dB, pubA), conv)
   await expect('DM key matches pinned vector', toB64u(cekA), 'jiSQGReKAryg5Pl9lxHIrfIoAu66082hTI9O3ZJxCjY')
   await expect('DM key agrees both ways', Array.from(cekA), Array.from(cekB))
+
+  // 8. ECIES (room key wraps): open a wrap minted on the web with the pinned
+  // identities — Android must open the exact same envelope, and a wrap bound
+  // to another context id must be refused (docs/E2EE.md §rooms).
+  const dBPriv = dB
+  const roomCtx = 'room:00000000-0000-0000-0000-000000000000'
+  const eciesEnvelope =
+    'mc1:eyJ2IjoxLCJ0IjoiZWNpZXMiLCJlcGsiOiJCRmpoNXVEenhQQ2M1ZVYtZlREdzlxOGVBa25Odmx5V2djME90UWtkQ2ZLbVVwQWVGcGJYV0llZlpjZUNiYjgyS18zOTByY1pDSERGYXZycVBObU5LMXMiLCJpdiI6IldIY0RZdVJWUnpNWlRnb2oiLCJjdCI6ImFTM2RaalFvbDg2TE5OekduYnJXYWRXZXFtQ21lMFJVY25sM2d5UTNhRDc5WEpMd0dqc3I2UmtzemZUaktJWlMifQ'
+  const opened = await unwrapFromPublicKey(eciesEnvelope, dBPriv, roomCtx)
+  await expect(
+    'ECIES web-wrap opens',
+    opened ? toB64u(opened) : null,
+    'AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dw',
+  )
+  await expect(
+    'ECIES foreign context rejected',
+    await unwrapFromPublicKey(eciesEnvelope, dBPriv, 'room:11111111-1111-1111-1111-111111111111'),
+    null,
+  )
+  const roundTrip = await wrapToPublicKey(new Uint8Array(32).fill(4), pubB, roomCtx)
+  await expect(
+    'ECIES wrap → unwrap round trip',
+    Array.from((await unwrapFromPublicKey(roundTrip, dBPriv, roomCtx)) ?? []),
+    Array.from(new Uint8Array(32).fill(4)),
+  )
 
   console.log(process.exitCode ? 'SELFTEST FAILED' : 'SELFTEST OK')
 }
