@@ -10,6 +10,7 @@ import {
 import { CookieNotice } from '@/components/common/CookieNotice'
 import StructuredData from '@/components/seo/StructuredData'
 import { organizationLd, webSiteLd, webApplicationLd } from '@/lib/seo-structured-data'
+import { Analytics } from '@vercel/analytics/next'
 
 /**
  * Google Search Console ownership token.
@@ -129,6 +130,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <CookieNotice />
         </div>
+        <Analytics />
       </body>
     </html>
   )
